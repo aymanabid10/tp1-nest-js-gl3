@@ -16,7 +16,7 @@ export class User {
   @Column()
   password!: string;
 
-  @Column({ type: 'enum', enum: Role })
+  @Column({ type: 'enum', enum: Role, default: Role.USER })
   role!: Role;
 
   @OneToMany(() => Cv, (cv) => cv.user)
