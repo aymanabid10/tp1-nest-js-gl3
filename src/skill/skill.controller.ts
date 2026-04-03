@@ -8,6 +8,9 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SkillService } from './skill.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
@@ -24,8 +27,11 @@ export class SkillController {
   }
 
   @Get()
-  findAll() {
-    return this.skillService.findAll();
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.skillService.findAll({ page, limit });
   }
 
   @Get(':id')

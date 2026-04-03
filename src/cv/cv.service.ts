@@ -5,6 +5,7 @@ import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { GenericService } from '../common/services/generic.service';
+import { paginate, IPaginationOptions } from 'nestjs-typeorm-paginate';
 
 @Injectable()
 export class CvService extends GenericService<Cv> {
@@ -24,14 +25,10 @@ export class CvService extends GenericService<Cv> {
     return this.cvRepository.save(cv);
   }
 
-  async findAllByUser(userId: number, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-    const [data, total] = await this.cvRepository.findAndCount({
-      where: { user: { id: userId } },
-      skip,
-      take: limit,
-    });
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  async findAllByUser(userId: number, options: IPaginationOptions) {
+    const queryBuilder = this.cvRepository.createQueryBuilder('cv')
+      .where('cv.userId = :userId', { userId });
+    return paginate(queryBuilder, options);
   }
 
   async findOneByUser(id: number, userId: number): Promise<Cv | null> {

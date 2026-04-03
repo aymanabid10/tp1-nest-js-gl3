@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Repository, DeepPartial, ObjectLiteral } from 'typeorm';
+import { paginate, Pagination, IPaginationOptions } from 'nestjs-typeorm-paginate';
 
 @Injectable()
 export class GenericService<T extends ObjectLiteral> {
@@ -10,10 +11,8 @@ export class GenericService<T extends ObjectLiteral> {
     return this.repository.save(entity);
   }
 
-  async findAll(page = 1, limit = 10): Promise<{ data: T[]; total: number; page: number; limit: number; totalPages: number }> {
-    const skip = (page - 1) * limit;
-    const [data, total] = await this.repository.findAndCount({ skip, take: limit });
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  async findAll(options: IPaginationOptions): Promise<Pagination<T>> {
+    return paginate<T>(this.repository, options);
   }
 
   async findOne(id: number): Promise<T | null> {

@@ -8,6 +8,9 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CvService } from './cv.service';
 import { CreateCvDto } from './dto/create-cv.dto';
@@ -24,8 +27,11 @@ export class CvController {
   }
 
   @Get()
-  findAll() {
-    return this.cvService.findAll();
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.cvService.findAll({ page, limit });
   }
 
   @Get(':id')
