@@ -16,13 +16,14 @@ export class CvService extends GenericService<Cv> {
     super(cvRepository);
   }
 
-  async create(createCvDto: CreateCvDto): Promise<Cv> {
+  async create(createCvDto: CreateCvDto): Promise<{ data: Cv }> {
     const cv = this.cvRepository.create({
       ...createCvDto,
       user: { id: createCvDto.userId },
       skills: createCvDto.skillIds?.map((id) => ({ id })) ?? [],
     });
-    return this.cvRepository.save(cv);
+    const saved = await this.cvRepository.save(cv);
+    return { data: saved };
   }
 
   async findAllByUser(userId: number, options: IPaginationOptions) {
@@ -31,28 +32,30 @@ export class CvService extends GenericService<Cv> {
     return paginate(queryBuilder, options);
   }
 
-  async findOneByUser(id: number, userId: number): Promise<Cv | null> {
-    return this.cvRepository.findOne({
+  async findOneByUser(id: number, userId: number): Promise<{ data: Cv | null }> {
+    const cv = await this.cvRepository.findOne({
       where: { id, user: { id: userId } },
     });
+    return { data: cv };
   }
 
-  async updateByUser(id: number, userId: number, updateCvDto: UpdateCvDto): Promise<Cv | null> {
-    const cv = await this.findOneByUser(id, userId);
-    if (!cv) return null;
+  async updateByUser(id: number, userId: number, updateCvDto: UpdateCvDto): Promise<{ data: Cv | null }> {
+    const result = await this.findOneByUser(id, userId);
+    if (!result.data) return { data: null };
     
-    Object.assign(cv, {
+    Object.assign(result.data, {
       ...updateCvDto,
-      skills: updateCvDto.skillIds?.map((skillId) => ({ id: skillId })) ?? cv.skills,
+      skills: updateCvDto.skillIds?.map((skillId) => ({ id: skillId })) ?? result.data.skills,
     });
     
-    return this.cvRepository.save(cv);
+    const updated = await this.cvRepository.save(result.data);
+    return { data: updated };
   }
 
-  async removeByUser(id: number, userId: number): Promise<boolean> {
-    const cv = await this.findOneByUser(id, userId);
-    if (!cv) return false;
+  async removeByUser(id: number, userId: number): Promise<{ success: boolean }> {
+    const result = await this.findOneByUser(id, userId);
+    if (!result.data) return { success: false };
     await this.cvRepository.softDelete(id);
-    return true;
+    return { success: true };
   }
 }

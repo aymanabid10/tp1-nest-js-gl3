@@ -29,7 +29,7 @@ async function bootstrap() {
   //1. Seed Skills
   const skills: Skill[] = [];
   for (let i = 0; i < 5; i++) {
-    const skill = await skillService.create({
+    const { data: skill } = await skillService.create({
       designation: randSkill()[0],
     });
     skills.push(skill);
@@ -40,7 +40,7 @@ async function bootstrap() {
   //2. Seed Users
   const users: User[] = [];
   for (let i = 0; i < 3; i++) {
-    const user = await userService.create({
+    const { data: user } = await userService.create({
       username: randUserName(),
       email: randEmail(),
       password: 'password123',
@@ -52,7 +52,7 @@ async function bootstrap() {
 
   //3. Seed CVs
   for (let i = 0; i < 10; i++) {
-    const cv = await cvService.create({
+    const { data: cv } = await cvService.create({
       name: randLastName(),
       firstname: randFirstName(),
       age: randNumber({ min: 22, max: 50 }),
