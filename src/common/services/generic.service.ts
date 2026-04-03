@@ -21,6 +21,11 @@ export class GenericService<T extends ObjectLiteral> {
     return { data: entity };
   }
 
+  async findOneBy(criteria: Partial<T>): Promise<{ data: T | null }> {
+    const entity = await this.repository.findOne({ where: criteria as any });
+    return { data: entity };
+  }
+
   async update(id: number, dto: DeepPartial<T>): Promise<{ data: T | null }> {
     const result = await this.findOne(id);
     if (!result.data) return { data: null };
