@@ -29,8 +29,8 @@ export class GenericService<T extends ObjectLiteral> {
     return { data: updated };
   }
 
-  async remove(id: number): Promise<{ success: boolean }> {
-    await this.repository.softDelete(id);
-    return { success: true };
+  async remove(criteria: Partial<T>): Promise<{ success: boolean; affected: number }> {
+    const result = await this.repository.softDelete(criteria as any);
+    return { success: true, affected: result.affected || 0 };
   }
 }
