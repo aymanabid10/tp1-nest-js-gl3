@@ -1,22 +1,23 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CvModule } from './cv/cv.module';
 import { UserModule } from './user/user.module';
 import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import dbConfig from './config/db.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'pass',
-      database: 'cv_db',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // create the tables auto : en dev seulement
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [dbConfig],
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => configService.get('database'),
+      inject: [ConfigService],
     }),
     CvModule,
     UserModule,
