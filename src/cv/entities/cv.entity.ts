@@ -36,6 +36,6 @@ export class Cv {
   user!: User;
 
   @ManyToMany(() => Skill, (skill) => skill.cvs, { eager: true })
-  @JoinTable() // JoinTable uniquement du côté propriétaire (Cv)
+  @JoinTable()
   skills!: Skill[];
 }
