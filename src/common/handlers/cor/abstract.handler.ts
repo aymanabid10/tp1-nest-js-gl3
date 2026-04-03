@@ -1,4 +1,4 @@
-import { Handler } from "./handler.interface";
+import { Handler } from './handler.interface';
 
 export abstract class AbstractHandler<T> implements Handler<T> {
   private nextHandler?: Handler<T>;

@@ -1,17 +1,15 @@
-import { ConflictException, Injectable } from "@nestjs/common";
-import { SignupDto } from "src/auth/dto/sign-up.dto";
-import { AbstractHandler } from "src/common/handlers/cor/abstract.handler";
-import { UserService } from "src/user/user.service";
+import { ConflictException, Injectable } from '@nestjs/common';
+import { SignupChainData } from 'src/auth/interface/auth-flow.interface';
+import { AbstractHandler } from 'src/common/handlers/cor/abstract.handler';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
-export class CheckEmailHandler extends AbstractHandler<SignupDto> {
-  constructor(
-    private readonly userService: UserService,
-  ) {
+export class CheckEmailHandler extends AbstractHandler<SignupChainData> {
+  constructor(private readonly userService: UserService) {
     super();
   }
 
-  async handle(data: SignupDto): Promise<SignupDto> {
+  async handle(data: SignupChainData): Promise<SignupChainData> {
     const user = await this.userService.findByEmail(data.email);
     if (user) throw new ConflictException('Email exists');
 

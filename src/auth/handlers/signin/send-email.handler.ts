@@ -1,9 +1,10 @@
-import { Injectable } from "@nestjs/common";
-import { AbstractHandler } from "src/common/handlers/cor/abstract.handler";
+import { Injectable } from '@nestjs/common';
+import { SignupChainData } from 'src/auth/interface/auth-flow.interface';
+import { AbstractHandler } from 'src/common/handlers/cor/abstract.handler';
 
 @Injectable()
-export class SendEmailHandler extends AbstractHandler<any> {
-  async handle(data: any) {
+export class SendEmailHandler extends AbstractHandler<SignupChainData> {
+  async handle(data: SignupChainData): Promise<SignupChainData> {
     console.log('Send verification email...');
     return super.handle(data);
   }

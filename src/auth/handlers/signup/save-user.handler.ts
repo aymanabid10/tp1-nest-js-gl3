@@ -1,17 +1,20 @@
-import { Injectable } from "@nestjs/common";
-import { SignupDto } from "src/auth/dto/sign-up.dto";
-import { AbstractHandler } from "src/common/handlers/cor/abstract.handler";
-import { User } from "src/user/entities/user.entity";
-import { UserService } from "src/user/user.service";
+import { Injectable } from '@nestjs/common';
+import { SignupChainData } from 'src/auth/interface/auth-flow.interface';
+import { AbstractHandler } from 'src/common/handlers/cor/abstract.handler';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
-export class SaveUserHandler extends AbstractHandler<SignupDto> {
+export class SaveUserHandler extends AbstractHandler<SignupChainData> {
   constructor(private userService: UserService) {
     super();
   }
 
-  async handle(data: SignupDto): Promise<any> {
+  async handle(data: SignupChainData): Promise<SignupChainData> {
     const user = await this.userService.create(data);
-    return super.handle({ ...data, ...user });
+
+    return super.handle({
+      ...data,
+      createdUser: user,
+    });
   }
 }

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { GenericService } from '../common/services/generic.service';
-import * as bcrypt from 'bcrypt';
+import { genSalt, hash } from 'bcrypt';
 
 @Injectable()
 export class UserService extends GenericService<User> {
@@ -18,8 +18,8 @@ export class UserService extends GenericService<User> {
     const userData: DeepPartial<User> = { ...dto };
 
     if (typeof userData.password === 'string' && !userData.salt) {
-      userData.salt = await bcrypt.genSalt();
-      userData.password = await bcrypt.hash(userData.password, userData.salt);
+      userData.salt = await genSalt();
+      userData.password = await hash(userData.password, userData.salt);
     }
 
     return super.create(userData);
