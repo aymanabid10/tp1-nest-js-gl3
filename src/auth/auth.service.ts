@@ -8,6 +8,7 @@ import { CheckPasswordHandler } from './handlers/signin/check-password.handler';
 import { GenerateJwtHandler } from './handlers/signin/generate-jwt.handler';
 import { SigninDto } from './dto/sign-in.dto';
 import { ValidateUserHandler } from './handlers/signin/validate-user.handler';
+import { SendEmailHandler } from './handlers/signin/send-email.handler';
 
 @Injectable()
 export class AuthService {
@@ -18,8 +19,8 @@ export class AuthService {
     private save: SaveUserHandler,
     private validateUserHandler : ValidateUserHandler,
     private checkPasswordHandler : CheckPasswordHandler,
-    private jwtHandler: GenerateJwtHandler
-    //private email: SendEmailHandler,
+    private jwtHandler: GenerateJwtHandler,
+    private email: SendEmailHandler,
   ) {}
 
   async signup(dto: SignupDto) {
@@ -27,7 +28,7 @@ export class AuthService {
       .setNext(this.checkEmail)
       .setNext(this.hash)
       .setNext(this.save)
-      //.setNext(this.email)
+      .setNext(this.email)
 
     return this.validate.handle(dto);
   }

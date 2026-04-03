@@ -14,6 +14,7 @@ import { HashPasswordHandler } from './handlers/signup/hash-password.handler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { UserModule } from 'src/user/user.module';
+import { SendEmailHandler } from './handlers/signin/send-email.handler';
 
 @Module({
   imports :[
@@ -41,6 +42,7 @@ import { UserModule } from 'src/user/user.module';
     CheckPasswordHandler,
     CheckEmailHandler,
     GenerateJwtHandler,
+    SendEmailHandler
   ]
 })
 export class AuthModule {}
