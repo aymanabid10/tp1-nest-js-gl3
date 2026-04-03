@@ -20,11 +20,14 @@ export class GenericService<T extends ObjectLiteral> {
     return this.repository.findOne({ where: { id } as any });
   }
 
-  update(id: number, dto: DeepPartial<T>): Promise<T | null> {
-    return Promise.resolve(null);
+  async update(id: number, dto: DeepPartial<T>): Promise<T | null> {
+    const entity = await this.findOne(id);
+    if (!entity) return null;
+    Object.assign(entity, dto);
+    return this.repository.save(entity);
   }
 
-  remove(id: number): Promise<void> {
-    return Promise.resolve();
+  async remove(id: number): Promise<void> {
+    await this.repository.softDelete(id);
   }
 }

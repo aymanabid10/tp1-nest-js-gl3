@@ -5,6 +5,7 @@ import {
   ManyToOne,
   ManyToMany,
   JoinTable,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Skill } from '../../skill/entities/skill.entity';
@@ -38,4 +39,7 @@ export class Cv {
   @ManyToMany(() => Skill, (skill) => skill.cvs, { eager: true })
   @JoinTable() // JoinTable uniquement du côté propriétaire (Cv)
   skills!: Skill[];
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }
