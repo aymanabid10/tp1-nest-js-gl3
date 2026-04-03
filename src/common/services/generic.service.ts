@@ -10,12 +10,14 @@ export class GenericService<T extends ObjectLiteral> {
     return this.repository.save(entity);
   }
 
-  findAll(): Promise<T[]> {
-    return Promise.resolve([]);
+  async findAll(page = 1, limit = 10): Promise<{ data: T[]; total: number; page: number; limit: number; totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.repository.findAndCount({ skip, take: limit });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  findOne(id: number): Promise<T | null> {
-    return Promise.resolve(null);
+  async findOne(id: number): Promise<T | null> {
+    return this.repository.findOne({ where: { id } as any });
   }
 
   update(id: number, dto: DeepPartial<T>): Promise<T | null> {

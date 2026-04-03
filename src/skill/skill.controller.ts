@@ -1,4 +1,14 @@
-import { ValidationPipe, UsePipes,  Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  ValidationPipe,
+  UsePipes,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { SkillService } from './skill.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
@@ -33,4 +43,3 @@ export class SkillController {
     return this.skillService.remove(+id);
   }
 }
-

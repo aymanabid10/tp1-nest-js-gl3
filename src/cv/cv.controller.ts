@@ -1,4 +1,7 @@
-import { ValidationPipe, UsePipes,  Controller,
+import {
+  ValidationPipe,
+  UsePipes,
+  Controller,
   Get,
   Post,
   Body,
