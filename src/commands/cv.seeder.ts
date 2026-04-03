@@ -15,6 +15,7 @@ import {
   randUserName,
   randSkill,
 } from '@ngneat/falso';
+import { Role } from 'src/shared/enums/role.enum';
 
 async function bootstrap() {
   const logger = new Logger('Seeder');
@@ -42,6 +43,7 @@ async function bootstrap() {
   for (let i = 0; i < 3; i++) {
     const user = await userService.create({
       username: randUserName(),
+      role: Role.USER,
       email: randEmail(),
       password: 'password123',
     });
