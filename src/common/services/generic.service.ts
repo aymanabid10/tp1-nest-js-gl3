@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Repository, DeepPartial, ObjectLiteral } from 'typeorm';
+import {
+  Repository,
+  DeepPartial,
+  ObjectLiteral,
+  FindOptionsWhere,
+} from 'typeorm';
 
 @Injectable()
-export class GenericService<T extends ObjectLiteral> {
+export class GenericService<T extends ObjectLiteral & { id: number }> {
   constructor(private readonly repository: Repository<T>) {}
 
   async create(dto: DeepPartial<T>): Promise<T> {
@@ -11,18 +16,24 @@ export class GenericService<T extends ObjectLiteral> {
   }
 
   findAll(): Promise<T[]> {
-    return Promise.resolve([]);
+    return this.repository.find();
   }
 
   findOne(id: number): Promise<T | null> {
-    return Promise.resolve(null);
+    return this.repository.findOneBy({ id } as FindOptionsWhere<T>);
   }
 
-  update(id: number, dto: DeepPartial<T>): Promise<T | null> {
-    return Promise.resolve(null);
+  async update(id: number, dto: DeepPartial<T>): Promise<T | null> {
+    const entity = await this.findOne(id);
+    if (!entity) {
+      return null;
+    }
+
+    const merged = this.repository.merge(entity, dto);
+    return this.repository.save(merged);
   }
 
-  remove(id: number): Promise<void> {
-    return Promise.resolve();
+  async remove(id: number): Promise<void> {
+    await this.repository.delete(id);
   }
 }

@@ -6,7 +6,14 @@ export function setupSwagger(app: INestApplication) {
     .setTitle('Tp1 NestJS API GL3')
     .setDescription('API documentation')
     .setVersion('1.0')
-    //.addBearerAuth() // TODO : Add JWT authentication if needed later
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

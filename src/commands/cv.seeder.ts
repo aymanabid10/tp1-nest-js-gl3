@@ -54,19 +54,21 @@ async function bootstrap() {
 
   //3. Seed CVs
   for (let i = 0; i < 10; i++) {
-    const cv = await cvService.create({
-      name: randLastName(),
-      firstname: randFirstName(),
-      age: randNumber({ min: 22, max: 50 }),
-      cin: `TN${randNumber({ min: 10000000, max: 99999999 })}`,
-      job: randJobTitle(),
-      path: '',
-      userId: users[i % users.length].id,
-      skillIds: [
-        skills[i % skills.length].id,
-        skills[(i + 1) % skills.length].id,
-      ],
-    });
+    const cv = await cvService.createForOwner(
+      {
+        name: randLastName(),
+        firstname: randFirstName(),
+        age: randNumber({ min: 22, max: 50 }),
+        cin: `TN${randNumber({ min: 10000000, max: 99999999 })}`,
+        job: randJobTitle(),
+        path: '',
+        skillIds: [
+          skills[i % skills.length].id,
+          skills[(i + 1) % skills.length].id,
+        ],
+      },
+      users[i % users.length].id,
+    );
     logger.log(`CV créé : ${cv.firstname} ${cv.name} — ${cv.job}`);
   }
   logger.log(`\n 10 CVs créés\n`);

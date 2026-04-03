@@ -28,10 +28,6 @@ export class CreateCvDto {
   @IsString()
   path?: string;
 
-  @ApiProperty()
-  @IsInt()
-  userId!: number;
-
   @ApiPropertyOptional({ type: [Number] })
   @IsOptional()
   @IsArray()

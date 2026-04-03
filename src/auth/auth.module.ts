@@ -11,13 +11,11 @@ import { CheckEmailHandler } from './handlers/signup/check-email.handler';
 import { ValidateSignupHandler } from './handlers/signup/validate.handler';
 import { SaveUserHandler } from './handlers/signup/save-user.handler';
 import { HashPasswordHandler } from './handlers/signup/hash-password.handler';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/user/entities/user.entity';
 import { UserModule } from 'src/user/user.module';
 import { SendEmailHandler } from './handlers/signin/send-email.handler';
 
 @Module({
-  imports :[
+  imports: [
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default_secret',
@@ -25,16 +23,14 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
         expiresIn: '1d',
       },
     }),
-    TypeOrmModule.forFeature([User]), // TODO : remove this and use UserModule instead when is fully implemented
-    UserModule
+    UserModule,
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     JwtStrategy,
-    JwtModule,
 
-    //CoR Handlers
+    // CoR handlers
     ValidateSignupHandler,
     ValidateUserHandler,
     SaveUserHandler,
@@ -42,7 +38,7 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
     CheckPasswordHandler,
     CheckEmailHandler,
     GenerateJwtHandler,
-    SendEmailHandler
-  ]
+    SendEmailHandler,
+  ],
 })
 export class AuthModule {}
