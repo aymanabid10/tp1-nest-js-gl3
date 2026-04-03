@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { UserService } from '../user/user.service';
 import { SkillService } from '../skill/skill.service';
@@ -16,13 +17,14 @@ import {
 } from '@ngneat/falso';
 
 async function bootstrap() {
+  const logger = new Logger('Seeder');
   const app = await NestFactory.createApplicationContext(AppModule);
 
   const userService = app.get(UserService);
   const skillService = app.get(SkillService);
   const cvService = app.get(CvService);
 
-  console.log('Démarrage du seeding\n');
+  logger.log('Démarrage du seeding\n');
 
   //1. Seed Skills
   const skills: Skill[] = [];
@@ -31,9 +33,9 @@ async function bootstrap() {
       designation: randSkill()[0],
     });
     skills.push(skill);
-    console.log(`Skill créé : ${skill.designation}`);
+    logger.log(`Skill créé : ${skill.designation}`);
   }
-  console.log(`\n${skills.length} Skills créés\n`);
+  logger.log(`\n${skills.length} Skills créés\n`);
 
   //2. Seed Users
   const users: User[] = [];
@@ -44,9 +46,9 @@ async function bootstrap() {
       password: 'password123',
     });
     users.push(user);
-    console.log(`User créé : ${user.username} (${user.email})`);
+    logger.log(`User créé : ${user.username} (${user.email})`);
   }
-  console.log(`\n${users.length} Users créés\n`);
+  logger.log(`\n${users.length} Users créés\n`);
 
   //3. Seed CVs
   for (let i = 0; i < 10; i++) {
@@ -63,12 +65,13 @@ async function bootstrap() {
         skills[(i + 1) % skills.length].id,
       ],
     });
-    console.log(`CV créé : ${cv.firstname} ${cv.name} — ${cv.job}`);
+    logger.log(`CV créé : ${cv.firstname} ${cv.name} — ${cv.job}`);
   }
-  console.log(`\n 10 CVs créés\n`);
+  logger.log(`\n 10 CVs créés\n`);
 
-  console.log('Seeding terminé avec succès');
+  logger.log('Seeding terminé avec succès');
   await app.close();
 }
 
 bootstrap();
+
