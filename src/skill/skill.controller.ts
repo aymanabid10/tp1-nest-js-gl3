@@ -17,7 +17,6 @@ import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 
 @Controller('skill')
-@UsePipes(new ValidationPipe({ whitelist: true }))
 export class SkillController {
   constructor(private readonly skillService: SkillService) {}
 

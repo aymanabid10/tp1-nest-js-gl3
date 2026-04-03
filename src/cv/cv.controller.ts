@@ -17,7 +17,6 @@ import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 
 @Controller('cv')
-@UsePipes(new ValidationPipe({ whitelist: true }))
 export class CvController {
   constructor(private readonly cvService: CvService) {}
 
