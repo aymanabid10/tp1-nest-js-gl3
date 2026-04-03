@@ -1,4 +1,4 @@
-import {
+import { ValidationPipe, UsePipes,
   Controller,
   Get,
   Post,
@@ -7,11 +7,12 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { CvService } from './cv.service';
-import { CreateCvDto } from './dto/create-cv.dto';
-import { UpdateCvDto } from './dto/update-cv.dto';
+import { ValidationPipe, UsePipes, CvService } from './cv.service';
+import { ValidationPipe, UsePipes, CreateCvDto } from './dto/create-cv.dto';
+import { ValidationPipe, UsePipes, UpdateCvDto } from './dto/update-cv.dto';
 
 @Controller('cv')
+@UsePipes(new ValidationPipe({ whitelist: true }))
 export class CvController {
   constructor(private readonly cvService: CvService) {}
 
@@ -40,3 +41,4 @@ export class CvController {
     return this.cvService.remove(+id);
   }
 }
+
