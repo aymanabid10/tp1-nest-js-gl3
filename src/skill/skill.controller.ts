@@ -1,7 +1,7 @@
-import { ValidationPipe, UsePipes, Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ValidationPipe, UsePipes, SkillService } from './skill.service';
-import { ValidationPipe, UsePipes, CreateSkillDto } from './dto/create-skill.dto';
-import { ValidationPipe, UsePipes, UpdateSkillDto } from './dto/update-skill.dto';
+import { ValidationPipe, UsePipes,  Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { SkillService } from './skill.service';
+import { CreateSkillDto } from './dto/create-skill.dto';
+import { UpdateSkillDto } from './dto/update-skill.dto';
 
 @Controller('skill')
 @UsePipes(new ValidationPipe({ whitelist: true }))

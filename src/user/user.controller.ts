@@ -1,7 +1,17 @@
-import { ValidationPipe, UsePipes, Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ValidationPipe, UsePipes, UserService } from './user.service';
-import { ValidationPipe, UsePipes, CreateUserDto } from './dto/create-user.dto';
-import { ValidationPipe, UsePipes, UpdateUserDto } from './dto/update-user.dto';
+import {
+  ValidationPipe,
+  UsePipes,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { UserService } from './user.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('user')
 @UsePipes(new ValidationPipe({ whitelist: true }))
@@ -33,4 +43,3 @@ export class UserController {
     return this.userService.remove(+id);
   }
 }
-
