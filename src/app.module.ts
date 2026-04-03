@@ -13,7 +13,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       host: 'localhost',
       port: 5432,
       username: 'postgres',
-      password: 'password',
+      password: 'pass',
       database: 'cv_db',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true, // create the tables auto : en dev seulement

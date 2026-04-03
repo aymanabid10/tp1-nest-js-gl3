@@ -1,26 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
-import { UpdateCvDto } from './dto/update-cv.dto';
+import { GenericService } from '../common/services/generic.service';
 
 @Injectable()
-export class CvService {
-  create(createCvDto: CreateCvDto) {
-    return 'This action adds a new cv';
+export class CvService extends GenericService<Cv> {
+  constructor(
+    @InjectRepository(Cv)
+    private readonly cvRepository: Repository<Cv>,
+  ) {
+    super(cvRepository);
   }
 
-  findAll() {
-    return `This action returns all cv`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} cv`;
-  }
-
-  update(id: number, updateCvDto: UpdateCvDto) {
-    return `This action updates a #${id} cv`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} cv`;
+  async create(createCvDto: CreateCvDto): Promise<Cv> {
+    const cv = this.cvRepository.create({
+      ...createCvDto,
+      user: { id: createCvDto.userId },
+      skills: createCvDto.skillIds?.map((id) => ({ id })) ?? [],
+    });
+    return this.cvRepository.save(cv);
   }
 }
