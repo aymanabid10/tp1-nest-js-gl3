@@ -16,8 +16,6 @@ import {
   randSkill,
 } from '@ngneat/falso';
 import { Role } from 'src/shared/enums/role.enum';
-import { HashPasswordHandler } from 'src/auth/handlers/signup/hash-password.handler';
-import { SignupDto } from 'src/auth/dto/sign-up.dto';
 
 async function bootstrap() {
   const logger = new Logger('Seeder');
@@ -26,7 +24,6 @@ async function bootstrap() {
   const userService = app.get(UserService);
   const skillService = app.get(SkillService);
   const cvService = app.get(CvService);
-  const PasswordHash = app.get(HashPasswordHandler);
 
   logger.log('Démarrage du seeding\n');
 
@@ -44,14 +41,12 @@ async function bootstrap() {
   //2. Seed Users
   const users: User[] = [];
   for (let i = 0; i < 3; i++) {
-    let dto = {
+    const user = await userService.create({
       username: randUserName(),
       role: Role.USER,
       email: randEmail(),
       password: 'password123',
-    } as SignupDto;
-    dto = await PasswordHash.handle(dto) as SignupDto;
-    const user = await userService.create(dto);
+    });
     users.push(user);
     logger.log(`User créé : ${user.username} (${user.email})`);
   }

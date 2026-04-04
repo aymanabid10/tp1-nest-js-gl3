@@ -1,6 +1,4 @@
 import {
-  ValidationPipe,
-  UsePipes,
   Controller,
   Get,
   Post,
@@ -8,38 +6,60 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SkillService } from './skill.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 
+@ApiTags('Skill')
 @Controller('skill')
-@UsePipes(new ValidationPipe({ whitelist: true }))
 export class SkillController {
   constructor(private readonly skillService: SkillService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new skill' })
+  @ApiResponse({ status: 201, description: 'Skill successfully created' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   create(@Body() createSkillDto: CreateSkillDto) {
     return this.skillService.create(createSkillDto);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all skills' })
+  @ApiResponse({ status: 200, description: 'List of skills' })
   findAll() {
     return this.skillService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.skillService.findOne(+id);
+  @ApiOperation({ summary: 'Get a skill by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Skill ID' })
+  @ApiResponse({ status: 200, description: 'Skill found' })
+  @ApiResponse({ status: 404, description: 'Skill not found' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.skillService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSkillDto: UpdateSkillDto) {
-    return this.skillService.update(+id, updateSkillDto);
+  @ApiOperation({ summary: 'Update a skill by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Skill ID' })
+  @ApiResponse({ status: 200, description: 'Skill successfully updated' })
+  @ApiResponse({ status: 404, description: 'Skill not found' })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSkillDto: UpdateSkillDto,
+  ) {
+    return this.skillService.update(id, updateSkillDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.skillService.remove(+id);
+  @ApiOperation({ summary: 'Delete a skill by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Skill ID' })
+  @ApiResponse({ status: 200, description: 'Skill successfully deleted' })
+  @ApiResponse({ status: 404, description: 'Skill not found' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.skillService.remove(id);
   }
 }

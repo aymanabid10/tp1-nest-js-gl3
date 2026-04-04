@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Cv } from './entities/cv.entity';
-import { CreateCvDto } from './dto/create-cv.dto';
-import { GenericService } from '../common/services/generic.service';
 import { PayloadInterface } from 'src/auth/interface/payload.interface';
 import { Role } from 'src/shared/enums/role.enum';
-import { UpdateCvDto } from './dto/update-cv.dto';
 import { Skill } from 'src/skill/entities/skill.entity';
+import { Cv } from './entities/cv.entity';
+import { CreateCvDto } from './dto/create-cv.dto';
+import { UpdateCvDto } from './dto/update-cv.dto';
+import { GenericService } from '../common/services/generic.service';
 
 @Injectable()
 export class CvService extends GenericService<Cv> {
@@ -74,6 +74,6 @@ export class CvService extends GenericService<Cv> {
 
   async removeForUser(id: number, user: PayloadInterface): Promise<void> {
     const cv = await this.findOneForUser(id, user);
-    await this.cvRepository.remove(cv);
+    await this.cvRepository.softDelete(cv.id);
   }
 }
