@@ -6,6 +6,7 @@ import { CvModule } from './cv/cv.module';
 import { UserModule } from './user/user.module';
 import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
 import dbConfig from './config/db.config';
 
 @Module({
@@ -23,6 +24,7 @@ import dbConfig from './config/db.config';
     CvModule,
     UserModule,
     SkillModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

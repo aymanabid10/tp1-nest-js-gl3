@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Cv } from '../../cv/entities/cv.entity';
+import { Role } from 'src/shared/enums/role.enum';
 
 export enum Role {
   USER = 'user',
