@@ -53,7 +53,7 @@ export class AuthService {
         email: data.createdUser.email,
         role: data.createdUser.role,
       },
-    };
+    } as SignupResult;
   }
 
   async signin(dto: SigninDto): Promise<SigninResult> {
