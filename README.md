@@ -13,16 +13,17 @@ Simple NestJS API for managing CVs, users, and skills.
 
 1. Install dependencies
 
-corepack pnpm install
+corepack ``pnpm install``
 
 2. Create environment file
 
-Copy .env.example to .env and update values.
+Copy `.env.example` to `.env` and update values.
 
 3. Run the app
 
+```bash
 corepack pnpm run start:dev
-
+```
 ## Useful Commands
 
 - Build: corepack pnpm run build
