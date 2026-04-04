@@ -5,13 +5,13 @@ import {
   ManyToOne,
   ManyToMany,
   JoinTable,
-  DeleteDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Skill } from '../../skill/entities/skill.entity';
+import { TimestampEntity } from 'src/shared/entities/time-stamp.entity';
 
 @Entity()
-export class Cv {
+export class Cv extends TimestampEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -40,6 +40,4 @@ export class Cv {
   @JoinTable() // JoinTable uniquement du côté propriétaire (Cv)
   skills!: Skill[];
 
-  @DeleteDateColumn()
-  deletedAt?: Date;
 }

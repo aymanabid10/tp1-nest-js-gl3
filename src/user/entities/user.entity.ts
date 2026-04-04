@@ -1,9 +1,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Cv } from '../../cv/entities/cv.entity';
 import { Role } from 'src/shared/enums/role.enum';
+import { TimestampEntity } from 'src/shared/entities/time-stamp.entity';
 
 @Entity()
-export class User {
+export class User extends TimestampEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
