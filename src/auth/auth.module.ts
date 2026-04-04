@@ -18,7 +18,8 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'default_secret',
+      secret: process.env.NODE_ENV === 'production' ? 
+        process.env.JWT_SECRET : process.env.JWT_SECRET ?? "default_secret",
       signOptions: {
         expiresIn: '1d',
       },
