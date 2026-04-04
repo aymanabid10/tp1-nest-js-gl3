@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PayloadInterface } from 'src/auth/interface/payload.interface';
 import { Role } from 'src/shared/enums/role.enum';
 import { Skill } from 'src/skill/entities/skill.entity';
+import { PaginatedResult } from 'src/common/dto/pagination.dto';
 import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
@@ -38,6 +39,35 @@ export class CvService extends GenericService<Cv> {
     }
 
     return this.cvRepository.find({ where: { user: { id: user.sub } } });
+  }
+
+  async findAllForUserPaginated(
+    user: PayloadInterface,
+    page = 1,
+    limit = 10,
+  ): Promise<PaginatedResult<Cv>> {
+    const normalizedPage = Math.max(1, Math.trunc(page));
+    const normalizedLimit = Math.max(1, Math.trunc(limit));
+
+    const [data, total] =
+      user.role === Role.ADMIN
+        ? await this.cvRepository.findAndCount({
+            skip: (normalizedPage - 1) * normalizedLimit,
+            take: normalizedLimit,
+          })
+        : await this.cvRepository.findAndCount({
+            where: { user: { id: user.sub } },
+            skip: (normalizedPage - 1) * normalizedLimit,
+            take: normalizedLimit,
+          });
+
+    return {
+      data,
+      total,
+      page: normalizedPage,
+      limit: normalizedLimit,
+      totalPages: Math.ceil(total / normalizedLimit),
+    };
   }
 
   async findOneForUser(id: number, user: PayloadInterface): Promise<Cv> {

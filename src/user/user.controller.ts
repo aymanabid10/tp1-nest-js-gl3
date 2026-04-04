@@ -7,8 +7,16 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -29,7 +37,20 @@ export class UserController {
   @Get()
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'List of users' })
-  findAll() {
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  findAll(
+    @Query() paginationDto: PaginationDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (page !== undefined || limit !== undefined) {
+      return this.userService.findAllPaginated(
+        paginationDto.page,
+        paginationDto.limit,
+      );
+    }
+
     return this.userService.findAll();
   }
 

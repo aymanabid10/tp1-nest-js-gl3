@@ -11,11 +11,13 @@ import {
   Req,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 import type { AuthenticatedRequest } from 'src/auth/interface/authenticated-request.interface';
 import { Role } from 'src/shared/enums/role.enum';
 import { CvService } from './cv.service';
@@ -35,7 +37,22 @@ export class CvController {
   }
 
   @Get()
-  findAll(@Req() req: AuthenticatedRequest) {
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() paginationDto: PaginationDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (page !== undefined || limit !== undefined) {
+      return this.cvService.findAllForUserPaginated(
+        req.user,
+        paginationDto.page,
+        paginationDto.limit,
+      );
+    }
+
     return this.cvService.findAllForUser(req.user);
   }
 

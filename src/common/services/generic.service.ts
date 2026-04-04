@@ -5,6 +5,7 @@ import {
   ObjectLiteral,
   FindOptionsWhere,
 } from 'typeorm';
+import { PaginatedResult } from '../dto/pagination.dto';
 
 @Injectable()
 export class GenericService<T extends ObjectLiteral & { id: number }> {
@@ -17,6 +18,24 @@ export class GenericService<T extends ObjectLiteral & { id: number }> {
 
   findAll(): Promise<T[]> {
     return this.repository.find();
+  }
+
+  async findAllPaginated(page = 1, limit = 10): Promise<PaginatedResult<T>> {
+    const normalizedPage = Math.max(1, Math.trunc(page));
+    const normalizedLimit = Math.max(1, Math.trunc(limit));
+
+    const [data, total] = await this.repository.findAndCount({
+      skip: (normalizedPage - 1) * normalizedLimit,
+      take: normalizedLimit,
+    });
+
+    return {
+      data,
+      total,
+      page: normalizedPage,
+      limit: normalizedLimit,
+      totalPages: Math.ceil(total / normalizedLimit),
+    };
   }
 
   findOne(id: number): Promise<T | null> {
