@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elegant NestJS Chat</title>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .msg-enter { animation: popIn 0.3s ease-out forwards; }
+    @keyframes popIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .reaction-btn { transition: transform 0.1s; }
+    .reaction-btn:active { transform: scale(1.3); }
+    .emoji-pill { transition: all 0.2s ease; }
+  </style>
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center font-sans text-slate-800">
+
+  <!-- ================= AUTHENTICATION VIEW ================= -->
+  <div id="auth-view" class="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300">
+    <div class="px-8 py-6">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-4">
+          <i class="fas fa-comments text-xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">Welcome to Chat</h2>
+        <p class="text-sm text-slate-500 mt-1" id="auth-subtitle">Sign in to continue</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-slate-200 mb-6">
+        <button id="tab-signin" onclick="switchTab('signin')" class="flex-1 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600">Sign In</button>
+        <button id="tab-signup" onclick="switchTab('signup')" class="flex-1 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700">Sign Up</button>
+      </div>
+
+      <!-- Form Fields -->
+      <div class="space-y-4">
+        <div id="field-username" class="hidden">
+          <label class="block text-xs font-medium text-slate-700 mb-1">Username</label>
+          <input type="text" id="username" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="johndoe">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Email</label>
+          <input type="email" id="email" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="john@example.com" value="user1@test.com">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Password</label>
+          <input type="password" id="password" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="••••••••" value="password123">
+        </div>
+      </div>
+
+      <button onclick="submitAuth()" id="btn-submit" class="w-full mt-6 bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition">
+        Sign In
+      </button>
+      
+      <div id="auth-error" class="mt-4 text-sm text-red-500 text-center hidden"></div>
+    </div>
+  </div>
+
+  <!-- ================= CHAT COMPONENT VIEW ================= -->
+  <div id="chat-view" class="hidden w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex shadow-slate-300 border border-slate-200">
+    
+    <!-- Sidebar -->
+    <div class="w-72 bg-slate-50 border-r border-slate-200 flex flex-col">
+      <div class="p-6 border-b border-slate-200 bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md shadow-blue-200" id="my-avatar">U</div>
+          <div>
+            <h3 class="font-bold text-slate-800" id="my-email">Fetching...</h3>
+            <p class="text-xs text-green-500 font-medium"><i class="fas fa-circle text-[8px] mr-1"></i>Online (ID: <span id="my-id">?</span>)</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Sidebar Tabs -->
+      <div class="flex border-b border-slate-200">
+        <button id="tab-people" onclick="switchSidebarTab('people')" class="flex-1 py-2.5 text-xs font-semibold text-blue-600 border-b-2 border-blue-600 flex items-center justify-center gap-1.5">
+          <i class="fas fa-user"></i> People
+        </button>
+        <button id="tab-rooms" onclick="switchSidebarTab('rooms')" class="flex-1 py-2.5 text-xs font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 flex items-center justify-center gap-1.5">
+          <i class="fas fa-layer-group"></i> Rooms
+        </button>
+      </div>
+
+      <!-- People Panel -->
+      <div id="panel-people" class="flex flex-col flex-1 overflow-hidden">
+        <div class="px-4 pt-3 pb-2">
+          <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+            <i class="fas fa-search text-slate-400 text-xs"></i>
+            <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search users..." class="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400">
+          </div>
+        </div>
+        <div id="user-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+          <div class="text-sm text-slate-400 px-2 py-4 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>Loading users...</div>
+        </div>
+      </div>
+
+      <!-- Rooms Panel -->
+      <div id="panel-rooms" class="hidden flex-col flex-1 overflow-hidden">
+        <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">My Rooms</span>
+          <button onclick="showCreateRoomModal()" class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition shadow" title="New Group">
+            <i class="fas fa-plus text-xs"></i>
+          </button>
+        </div>
+        <div id="room-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+          <div class="text-sm text-slate-400 px-2 py-4 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>Loading rooms...</div>
+        </div>
+      </div>
+
+      <!-- Hidden inputs -->
+      <input type="hidden" id="receiverId">
+      <input type="hidden" id="my-id-hint">
+
+      <div class="p-4 border-t border-slate-200">
+        <button onclick="logout()" class="w-full py-2 text-sm font-medium text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-2">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== Create Room Modal ===== -->
+    <div id="room-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100">
+          <h3 class="font-bold text-slate-800">Create a Group Room</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Select members to add to the room</p>
+        </div>
+        <div class="px-6 py-4 space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Room Name <span class="text-slate-400">(optional)</span></label>
+            <input type="text" id="new-room-name" placeholder="e.g. Project Alpha" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-2">Add Members</label>
+            <div id="modal-user-list" class="max-h-40 overflow-y-auto space-y-1 border border-slate-200 rounded-lg p-2">
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-4 flex gap-3 border-t border-slate-100">
+          <button onclick="hideCreateRoomModal()" class="flex-1 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+          <button onclick="submitCreateRoom()" class="flex-1 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Create Room</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="flex-1 flex flex-col bg-[#f0f2f5] relative">
+      
+      <!-- Top header -->
+      <div class="h-16 px-6 bg-white border-b border-slate-200 flex items-center shadow-sm z-10">
+        <div id="chat-avatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold mr-3 text-sm">?</div>
+        <div>
+          <h2 class="font-semibold text-slate-800" id="chat-header-name">Select a user</h2>
+          <p class="text-xs text-slate-400" id="chat-header-id"></p>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <span id="socket-status" class="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Connected
+          </span>
+        </div>
+      </div>
+
+      <!-- Messages container -->
+      <div id="chatBox" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Messages injected here -->
+      </div>
+
+      <!-- Reply context banner -->
+      <div id="reply-banner" class="hidden px-6 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+        <div class="text-sm text-slate-600 flex items-center gap-2">
+          <i class="fas fa-reply text-blue-500"></i>
+          <span>Replying to <b id="reply-id-display" class="font-medium italic"></b></span>
+        </div>
+        <button onclick="cancelReply()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Message input -->
+      <div class="p-4 bg-white border-t border-slate-200">
+        <div class="flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition shadow-inner">
+          <input type="hidden" id="replyIdInput">
+          
+          <button class="p-2 text-slate-400 hover:text-blue-500 rounded-full transition"><i class="far fa-smile text-xl"></i></button>
+          
+          <input type="text" id="messageInput" onkeypress="handleEnter(event)" 
+                 class="flex-1 bg-transparent border-none py-2 px-1 outline-none text-slate-700 placeholder-slate-400" 
+                 placeholder="Type your message...">
+          
+          <button onclick="sendMessage()" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0">
+            <i class="fas fa-paper-plane ml-[-2px]"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    let socket;
+    let jwtToken = "";
+    let myUserId = 0;
+    let authMode = 'signin';
+    const API_URL = "http://localhost:3000";
+
+    // Utility: Decode JWT manually
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(window.atob(base64));
+      } catch (e) { return null; }
+    }
+
+    // --- Authentication UI Logic ---
+    function switchTab(mode) {
+      authMode = mode;
+      document.getElementById('tab-signin').className = mode === 'signin' ? 'flex-1 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600' : 'flex-1 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700';
+      document.getElementById('tab-signup').className = mode === 'signup' ? 'flex-1 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600' : 'flex-1 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-700';
+      document.getElementById('field-username').style.display = mode === 'signup' ? 'block' : 'none';
+      document.getElementById('btn-submit').innerText = mode === 'signin' ? 'Sign In' : 'Create Account';
+      document.getElementById('auth-subtitle').innerText = mode === 'signin' ? 'Sign in to continue' : 'Register a new account';
+      document.getElementById('auth-error').classList.add('hidden');
+    }
+
+    async function submitAuth() {
+      const email = document.getElementById("email").value;
+      const pw = document.getElementById("password").value;
+      const un = document.getElementById("username").value;
+      const errBox = document.getElementById("auth-error");
+
+      errBox.classList.add('hidden');
+      const endpoint = authMode === 'signin' ? '/auth/signin' : '/auth/signup';
+      const body = authMode === 'signin' ? { email, password: pw } : { username: un || email.split('@')[0], email, password: pw };
+
+      try {
+        let res = await fetch(`${API_URL}${endpoint}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        let data = await res.json();
+
+        const token = data.access_token || data.token;
+
+        if (token) {
+          setupSession(token, email);
+        } else if (authMode === 'signup' && res.ok) { // Success signup without auto-login sometimes returns 201 missing token
+          switchTab('signin'); // Switch to sign in automatically
+          submitAuth(); // Login immediately
+        } else {
+          let errorMsg = "Authentication failed.";
+          if (data.message) {
+            errorMsg = Array.isArray(data.message) ? data.message.join(", ") : data.message;
+          }
+          errBox.innerText = errorMsg;
+          errBox.classList.remove('hidden');
+        }
+      } catch(e) {
+        errBox.innerText = "Cannot reach API. Ensure `npm run start:dev` is running.";
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function setupSession(token, email) {
+      jwtToken = token;
+      const decoded = parseJwt(token);
+      myUserId = decoded.sub || decoded.userId || 0; // standard payload mapping
+
+      document.getElementById("auth-view").classList.add("hidden");
+      document.getElementById("chat-view").classList.remove("hidden");
+      
+      document.getElementById("my-email").innerText = email;
+      document.getElementById("my-avatar").innerText = email.charAt(0).toUpperCase();
+      document.getElementById("my-id").innerText = myUserId;
+      document.getElementById("my-id-hint").innerText = myUserId;
+
+      initWebSocket();
+      loadUsers();
+    }
+
+    // ─── Global State & Notifications ─────────────────────────────────────
+    let allUsers = [];
+    let unreadCounts = { dm: {}, room: {} };
+    let totalUnread = 0;
+
+    function updateDocumentTitle() {
+      totalUnread = Object.values(unreadCounts.dm).reduce((a,b)=>a+b,0) + Object.values(unreadCounts.room).reduce((a,b)=>a+b,0);
+      document.title = totalUnread > 0 ? `(${totalUnread}) New Message - Chat` : 'tp1-nest-js-gl3 Chat';
+    }
+
+    function showToast(id, content, type) {
+       let title = "New Message";
+       let avatarInitials = '?';
+       let avatarColor = 'from-blue-500 to-indigo-500';
+       
+       if (type === 'dm') {
+          const u = allUsers.find(user => user.id === id);
+          if (u) {
+            title = u.username || u.email;
+            avatarInitials = title.charAt(0).toUpperCase();
+            const colors = ['from-blue-500 to-indigo-500','from-violet-500 to-purple-500','from-emerald-500 to-teal-500','from-orange-400 to-red-500','from-pink-500 to-rose-500'];
+            avatarColor = colors[u.id % colors.length];
+          }
+       } else {
+          const r = allRooms.find(room => room.id === id);
+          if (r) {
+            title = r.name || `Room #${r.id}`;
+            avatarInitials = '<i class="fas fa-layer-group text-[10px]"></i>';
+            avatarColor = 'from-violet-500 to-purple-500';
+          }
+       }
+       
+       const c = document.getElementById('toast-container');
+       const t = document.createElement('div');
+       t.className = "bg-white pointer-events-auto border text-left border-slate-200 shadow-xl rounded-lg p-3 w-72 transform transition-all duration-300 translate-x-[120%] cursor-pointer hover:bg-slate-50 flex gap-3 items-start relative overflow-hidden";
+       
+       const brief = content.length > 40 ? content.substring(0,40)+'...' : content;
+       t.innerHTML = `
+         <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${avatarColor}"></div>
+         <div class="w-8 h-8 rounded-full bg-gradient-to-tr ${avatarColor} flex items-center justify-center text-white font-bold flex-shrink-0 text-xs shadow-sm">${avatarInitials}</div>
+         <div class="flex-1 min-w-0">
+           <div class="text-sm font-bold text-slate-800 truncate">${title}</div>
+           <div class="text-xs text-slate-500 mt-0.5 break-words line-clamp-2">${brief}</div>
+         </div>
+       `;
+       
+       t.onclick = () => {
+          t.remove();
+          if (type === 'dm') {
+             switchSidebarTab('people');
+             const u = allUsers.find(user => user.id === id);
+             if (u) selectUser(id, title, title.charAt(0).toUpperCase(), avatarColor);
+          } else {
+             switchSidebarTab('rooms');
+             const r = allRooms.find(room => room.id === id);
+             if (r) selectRoom(id, title, 'group');
+          }
+       };
+
+       c.appendChild(t);
+       
+       requestAnimationFrame(() => {
+         requestAnimationFrame(() => {
+           t.classList.remove('translate-x-[120%]');
+         });
+       });
+
+       setTimeout(() => {
+          t.classList.add('translate-x-[120%]');
+          setTimeout(() => t.remove(), 300);
+       }, 3500);
+    }
+
+    // ─── Sidebar tab switching ────────────────────────────────────────────────
+    let currentRoomId = null; // null = DM mode
+
+    function switchSidebarTab(tab) {
+      const isPeople = tab === 'people';
+      document.getElementById('tab-people').className = `flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 ${ isPeople ? 'text-blue-600 border-blue-600' : 'text-slate-500 border-transparent hover:text-slate-700' }`;
+      document.getElementById('tab-rooms').className  = `flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 ${ !isPeople ? 'text-blue-600 border-blue-600' : 'text-slate-500 border-transparent hover:text-slate-700' }`;
+      document.getElementById('panel-people').classList.toggle('hidden', !isPeople);
+      document.getElementById('panel-rooms').classList.toggle('hidden', isPeople);
+      document.getElementById('panel-people').classList.toggle('flex', isPeople);
+      document.getElementById('panel-rooms').classList.toggle('flex', !isPeople);
+      if (!isPeople) loadRooms();
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${API_URL}/user`, {
+          headers: { "Authorization": `Bearer ${jwtToken}` }
+        });
+        if (res.ok) {
+          let users = await res.json();
+          // Support paginated response or plain array
+          if (users.data) users = users.data;
+          allUsers = users.filter(u => u.id !== myUserId);
+          renderUserList(allUsers);
+        }
+      } catch(e) {
+        console.error("Error loading users:", e);
+      }
+    }
+
+    function renderUserList(users) {
+      const list = document.getElementById('user-list');
+      if (!users.length) {
+        list.innerHTML = '<div class="text-sm text-slate-400 text-center py-6">No other users found</div>';
+        return;
+      }
+      list.innerHTML = users.map(u => {
+        const initials = (u.username || u.email || '?').charAt(0).toUpperCase();
+        const displayName = u.username || u.email;
+        const colors = ['from-blue-500 to-indigo-500','from-violet-500 to-purple-500','from-emerald-500 to-teal-500','from-orange-400 to-red-500','from-pink-500 to-rose-500'];
+        const color = colors[u.id % colors.length];
+        return `
+          <div id="user-item-${u.id}" onclick="selectUser(${u.id}, '${displayName}', '${initials}', '${color}')"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white hover:shadow-sm transition-all group">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr ${color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-slate-700 truncate group-hover:text-blue-600">${displayName}</p>
+              <p class="text-xs text-slate-400">ID: ${u.id}</p>
+            </div>
+            ${unreadCounts.dm[u.id] ? `<div class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto shadow-sm">${unreadCounts.dm[u.id]}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    function filterUsers() {
+      const q = document.getElementById('user-search').value.toLowerCase();
+      const filtered = allUsers.filter(u => 
+        (u.username || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q)
+      );
+      renderUserList(filtered);
+    }
+
+    function selectUser(id, name, initials, color) {
+      currentRoomId = null; // switch back to DM mode
+      document.getElementById('receiverId').value = id;
+
+      unreadCounts.dm[id] = 0;
+      updateDocumentTitle();
+      renderUserList(allUsers);
+
+      // Update header
+      document.getElementById('chat-header-name').innerText = name;
+      document.getElementById('chat-header-id').innerText = `ID: ${id}`;
+      document.getElementById('chat-avatar').className = `w-8 h-8 rounded-full bg-gradient-to-tr ${color} flex items-center justify-center text-white font-bold mr-3 text-sm`;
+      document.getElementById('chat-avatar').innerText = initials;
+
+      // Highlight active user
+      document.querySelectorAll('[id^="user-item-"]').forEach(el => {
+        el.classList.remove('bg-blue-50', 'shadow-sm');
+      });
+      const activeItem = document.getElementById(`user-item-${id}`);
+      if (activeItem) activeItem.classList.add('bg-blue-50', 'shadow-sm');
+
+      loadHistory();
+    }
+
+    async function loadHistory() {
+      const rx = document.getElementById("receiverId").value;
+      if (!rx || !jwtToken) return;
+
+      try {
+        const res = await fetch(`${API_URL}/messages/history/${rx}`, {
+          headers: { "Authorization": `Bearer ${jwtToken}` }
+        });
+        if (res.ok) {
+          const messages = await res.json();
+          document.getElementById("chatBox").innerHTML = "";
+          messages.forEach(msg => {
+            renderMessage(msg, msg.senderId === myUserId);
+            if (msg.reactions && msg.reactions.length > 0) {
+              msg.reactions.forEach(reaction => {
+                updateReactionUI({
+                  messageId: msg.id,
+                  userId: reaction.userId || (reaction.user && reaction.user.id),
+                  emoji: reaction.emoji,
+                  removed: false
+                });
+              });
+            }
+          });
+        }
+      } catch(e) {
+        console.error("Error loading chat history:", e);
+      }
+    }
+
+    function logout() {
+      if(socket) socket.disconnect();
+      jwtToken = "";
+      currentRoomId = null;
+      document.getElementById("chatBox").innerHTML = "";
+      document.getElementById("user-list").innerHTML = '<div class="text-sm text-slate-400 px-2 py-4 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>Loading users...</div>';
+      document.getElementById("room-list").innerHTML = '<div class="text-sm text-slate-400 px-2 py-4 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>Loading rooms...</div>';
+      document.getElementById("chat-header-name").innerText = "Select a user";
+      document.getElementById("chat-header-id").innerText = "";
+      document.getElementById("chat-view").classList.add("hidden");
+      document.getElementById("auth-view").classList.remove("hidden");
+    }
+
+    // --- WebSocket Logic ---
+    function initWebSocket() {
+      socket = io(`${API_URL}/chat`, { auth: { token: jwtToken } });
+
+      socket.on("connect", () => {
+        socket.emit("register", {}, (res) => {
+          console.log("Register ACK:", res);
+          // Seed room list from register ACK
+          if (res && res.rooms) renderRoomList(res.rooms);
+        });
+      });
+
+      socket.on("exception", (err) => {
+        console.error("Socket Exception:", err);
+        alert("Error: " + (err.message || "Validation failed"));
+      });
+
+      // DM incoming message — only show if we're in DM mode with that sender
+      socket.on("receiveMessage", (payload) => {
+        const activeRx = document.getElementById('receiverId').value;
+        if (!currentRoomId && String(payload.senderId) === String(activeRx)) {
+          renderMessage(payload, payload.senderId === myUserId);
+        } else if (payload.senderId !== myUserId) {
+          unreadCounts.dm[payload.senderId] = (unreadCounts.dm[payload.senderId] || 0) + 1;
+          renderUserList(allUsers);
+          showToast(payload.senderId, payload.content, 'dm');
+          updateDocumentTitle();
+        }
+      });
+
+      // Room incoming message — only show if we're viewing that room
+      socket.on("roomMessage", (payload) => {
+        if (currentRoomId && payload.roomId === currentRoomId) {
+          renderMessage(payload, payload.senderId === myUserId);
+        } else if (payload.senderId !== myUserId) {
+          unreadCounts.room[payload.roomId] = (unreadCounts.room[payload.roomId] || 0) + 1;
+          renderRoomList(allRooms);
+          showToast(payload.roomId, payload.content, 'room');
+          updateDocumentTitle();
+        }
+      });
+
+      socket.on("messageReaction", (payload) => { updateReactionUI(payload); });
+
+      socket.on("disconnect", () => {
+        const flag = document.getElementById("socket-status");
+        flag.className = "px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full flex items-center gap-1.5";
+        flag.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Disconnected';
+      });
+    }
+
+    // --- UI/Chat Actions ---
+    function handleEnter(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    function initReply(msgId) {
+      document.getElementById("replyIdInput").value = msgId;
+      
+      let replyText = "message";
+      const repliedMsgEl = document.getElementById(`msg-${msgId}`);
+      if (repliedMsgEl) {
+         const p = repliedMsgEl.querySelector('p.break-words');
+         if (p && p.innerText) replyText = p.innerText;
+      }
+      if (replyText.length > 50) replyText = replyText.substring(0, 50) + '...';
+
+      document.getElementById("reply-id-display").innerText = `"${replyText}"`;
+      document.getElementById("reply-banner").classList.remove("hidden");
+      document.getElementById("messageInput").focus();
+    }
+
+    function cancelReply() {
+      document.getElementById("replyIdInput").value = "";
+      document.getElementById("reply-banner").classList.add("hidden");
+    }
+
+    function sendMessage() {
+      const content = document.getElementById("messageInput").value.trim();
+      const reply = document.getElementById("replyIdInput").value;
+      if (!content) return;
+
+      if (currentRoomId) {
+        // ── Room message
+        const payload = { roomId: currentRoomId, content };
+        if (reply) payload.replyToId = parseInt(reply);
+        socket.emit("sendRoomMessage", payload, (ack) => {
+          renderMessage(ack, true);
+          document.getElementById("messageInput").value = "";
+          cancelReply();
+        });
+      } else {
+        // ── DM
+        const rx = document.getElementById("receiverId").value;
+        if (!rx) return;
+        const payload = { receiverId: parseInt(rx), content };
+        if (reply) payload.replyToId = parseInt(reply);
+        socket.emit("sendMessage", payload, (ack) => {
+          renderMessage(ack, true);
+          document.getElementById("messageInput").value = "";
+          cancelReply();
+        });
+      }
+    }
+
+    function reactTo(msgId, emoji) {
+      socket.emit("reactToMessage", { messageId: msgId, emoji }, (ack) => { updateReactionUI(ack); });
+    }
+
+    // ─── Rooms UI ─────────────────────────────────────────────────────────────
+    let allRooms = [];
+    let selectedMemberIds = new Set();
+
+    async function loadRooms() {
+      try {
+        const res = await fetch(`${API_URL}/messages/rooms`, {
+          headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        if (res.ok) {
+          allRooms = await res.json();
+          renderRoomList(allRooms);
+        }
+      } catch(e) { console.error('Error loading rooms:', e); }
+    }
+
+    function renderRoomList(rooms) {
+      const list = document.getElementById('room-list');
+      if (!rooms || !rooms.length) {
+        list.innerHTML = '<div class="text-sm text-slate-400 text-center py-6">No rooms yet. Create one!</div>';
+        return;
+      }
+      list.innerHTML = rooms.map(r => {
+        const name = r.name || `Room #${r.id}`;
+        const icon = r.type === 'group' ? 'fa-layer-group' : 'fa-lock';
+        const memberCount = r.members ? r.members.length : 0;
+        return `
+          <div id="room-item-${r.id}" onclick="selectRoom(${r.id}, '${name}', '${r.type}')"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white hover:shadow-sm transition-all group">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-500 to-purple-500 flex items-center justify-center text-white text-sm flex-shrink-0">
+              <i class="fas ${icon}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-slate-700 truncate group-hover:text-violet-600">${name}</p>
+              <p class="text-xs text-slate-400">${memberCount} member${memberCount !== 1 ? 's' : ''}</p>
+            </div>
+            ${unreadCounts.room[r.id] ? `<div class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto shadow-sm">${unreadCounts.room[r.id]}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    async function selectRoom(id, name, type) {
+      currentRoomId = id;
+      document.getElementById('receiverId').value = '';
+
+      unreadCounts.room[id] = 0;
+      updateDocumentTitle();
+      renderRoomList(allRooms);
+      document.getElementById('chat-header-name').innerText = name;
+      document.getElementById('chat-header-id').innerText = type === 'group' ? 'Group Room' : 'Private Room';
+      document.getElementById('chat-avatar').className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-purple-500 flex items-center justify-center text-white font-bold mr-3 text-sm';
+      document.getElementById('chat-avatar').innerHTML = '<i class="fas fa-layer-group text-xs"></i>';
+
+      document.querySelectorAll('[id^="room-item-"]').forEach(el => el.classList.remove('bg-violet-50', 'shadow-sm'));
+      const active = document.getElementById(`room-item-${id}`);
+      if (active) active.classList.add('bg-violet-50', 'shadow-sm');
+
+      // Join the room via socket too
+      socket.emit('joinRoom', { roomId: id });
+
+      // Load history
+      document.getElementById('chatBox').innerHTML = '';
+      try {
+        const res = await fetch(`${API_URL}/messages/rooms/${id}/history`, {
+          headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        if (res.ok) {
+          const messages = await res.json();
+          messages.forEach(msg => {
+            renderMessage(msg, msg.senderId === myUserId);
+            if (msg.reactions && msg.reactions.length) {
+              msg.reactions.forEach(r => updateReactionUI({ messageId: msg.id, userId: r.userId || (r.user && r.user.id), emoji: r.emoji, removed: false }));
+            }
+          });
+        }
+      } catch(e) { console.error('Error loading room history:', e); }
+    }
+
+    function showCreateRoomModal() {
+      selectedMemberIds = new Set();
+      document.getElementById('new-room-name').value = '';
+      const list = document.getElementById('modal-user-list');
+      list.innerHTML = allUsers.map(u => {
+        const name = u.username || u.email;
+        return `
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
+            <input type="checkbox" value="${u.id}" onchange="toggleModalMember(${u.id}, this.checked)" class="accent-blue-600">
+            <span class="text-sm text-slate-700">${name}</span>
+          </label>`;
+      }).join('');
+      document.getElementById('room-modal').classList.remove('hidden');
+    }
+
+    function hideCreateRoomModal() {
+      document.getElementById('room-modal').classList.add('hidden');
+    }
+
+    function toggleModalMember(userId, checked) {
+      if (checked) selectedMemberIds.add(userId);
+      else selectedMemberIds.delete(userId);
+    }
+
+    async function submitCreateRoom() {
+      const name = document.getElementById('new-room-name').value.trim();
+      const memberIds = [...selectedMemberIds];
+      if (!memberIds.length) { alert('Please select at least one member.'); return; }
+      try {
+        const res = await fetch(`${API_URL}/messages/rooms`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${jwtToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name || undefined, type: 'group', memberIds })
+        });
+        if (res.ok) {
+          const room = await res.json();
+          hideCreateRoomModal();
+          allRooms.unshift(room);
+          renderRoomList(allRooms);
+          switchSidebarTab('rooms');
+          selectRoom(room.id, room.name || `Room #${room.id}`, room.type);
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.message || 'Could not create room'));
+        }
+      } catch(e) { alert('Network error creating room'); }
+    }
+
+    // --- Rendering Logic ---
+    function renderMessage(msg, isSent) {
+      // Avoid duplicates if already rendered via ACK
+      if(document.getElementById(`msg-${msg.id}`)) return;
+
+      const box = document.getElementById("chatBox");
+      const wrapper = document.createElement("div");
+      wrapper.className = `flex w-full msg-enter ${isSent ? 'justify-end' : 'justify-start'}`;
+      wrapper.id = `msg-${msg.id}`;
+
+      let replyHtml = '';
+      if(msg.replyToId) {
+        let replyContent = "Message snippet...";
+        if (msg.replyTo && msg.replyTo.content) {
+          replyContent = msg.replyTo.content;
+        } else {
+          const repliedMsgEl = document.getElementById(`msg-${msg.replyToId}`);
+          if (repliedMsgEl) {
+             const p = repliedMsgEl.querySelector('p.break-words');
+             if (p) replyContent = p.innerText;
+          }
+        }
+        if (replyContent.length > 60) replyContent = replyContent.substring(0, 60) + '...';
+
+        const replyStyles = isSent 
+            ? 'bg-blue-700/30 text-blue-100 border-l-2 border-blue-300' 
+            : 'bg-slate-100 text-slate-500 border-l-2 border-slate-300';
+
+        replyHtml = `
+          <div class="flex flex-col text-[11px] ${replyStyles} rounded-md px-2 py-1 mb-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity" 
+               onclick="document.getElementById('msg-${msg.replyToId}')?.scrollIntoView({behavior: 'smooth', block: 'center'})">
+            <div class="flex items-center gap-1 mb-0.5">
+              <i class="fas fa-reply text-[9px]"></i>
+              <span class="font-semibold opacity-90">Replied</span>
+            </div>
+            <span class="truncate max-w-[200px] opacity-90 italic">"${replyContent}"</span>
+          </div>`;
+      }
+
+      // Action toolbar (appears on hover via CSS group)
+      const actionsHtml = `
+        <div class="absolute ${isSent ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-md border border-slate-100 rounded-full px-1.5 py-1 z-10 w-max">
+          <button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '👍')">👍</button>
+          <button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '❤️')">❤️</button>
+          <button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '😂')">😂</button>
+          <div class="w-px h-3 bg-slate-200 mx-1"></div>
+          <button class="hover:text-blue-600 text-slate-400 p-1.5 rounded-full text-xs" onclick="initReply(${msg.id})" title="Reply"><i class="fas fa-reply"></i></button>
+        </div>
+      `;
+
+      const bubbleColor = isSent ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm';
+      const timeDate = msg.createdAt ? new Date(msg.createdAt) : new Date();
+      const time = timeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+      wrapper.innerHTML = `
+        <div class="max-w-[75%] relative group flex flex-col">
+          ${actionsHtml}
+          ${replyHtml}
+          <div class="${bubbleColor} px-4 py-2.5 shadow-sm relative">
+            <p class="text-sm break-words">${msg.content}</p>
+            <div class="text-[10px] ${isSent ? 'text-blue-200' : 'text-slate-400'} text-right mt-1 font-medium">#${msg.id} • ${time}</div>
+            
+            <!-- Reactions container overlaps the bottom -->
+            <div id="reactions-${msg.id}" class="absolute -bottom-3 ${isSent ? 'right-2' : 'left-2'} flex gap-1 flex-wrap z-20"></div>
+          </div>
+        </div>
+      `;
+
+      box.appendChild(wrapper);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function updateReactionUI(reaction) {
+      const container = document.getElementById(`reactions-${reaction.messageId}`);
+      if (!container) return;
+
+      // Unique ID per user-emoji combination to cleanly add/remove
+      const badgeId = `react-${reaction.messageId}-${reaction.userId}-${reaction.emoji}`;
+      const existing = document.getElementById(badgeId);
+
+      if (reaction.removed) {
+        if(existing) existing.remove();
+      } else {
+        if(!existing) {
+          const pill = document.createElement("div");
+          pill.id = badgeId;
+          pill.className = "emoji-pill bg-white border border-slate-200 shadow-sm rounded-full px-1.5 py-0.5 text-xs flex items-center";
+          pill.innerHTML = `<span>${reaction.emoji}</span>`;
+          container.appendChild(pill);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
