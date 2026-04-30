@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/passport-jwt.strategy';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ValidateUserHandler } from './handlers/signin/validate-user.handler';
 import { CheckPasswordHandler } from './handlers/signin/check-password.handler';
 import { GenerateJwtHandler } from './handlers/signin/generate-jwt.handler';
@@ -17,12 +18,13 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret: process.env.NODE_ENV === 'production' ? 
-        process.env.JWT_SECRET : process.env.JWT_SECRET ?? "default_secret",
-      signOptions: {
-        expiresIn: '1d',
-      },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET') ?? 'default_secret',
+        signOptions: { expiresIn: '1d' },
+      }),
     }),
     UserModule,
   ],
@@ -41,5 +43,6 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
     GenerateJwtHandler,
     SendEmailHandler,
   ],
+  exports: [JwtModule],
 })
 export class AuthModule {}

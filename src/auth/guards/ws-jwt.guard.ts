@@ -22,11 +22,7 @@ export class WsJwtGuard implements CanActivate {
         throw new WsException('Unauthorized');
       }
 
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.NODE_ENV === 'production' 
-          ? process.env.JWT_SECRET 
-          : process.env.JWT_SECRET ?? "default_secret"
-      });
+      const payload = this.jwtService.verify(token);
 
       // Assuming payload has 'sub' for user ID based on common NestJS patterns
       const user = await this.userService.findOne(payload.sub); 
