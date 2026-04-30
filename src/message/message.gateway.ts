@@ -159,4 +159,23 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     this.server.to(`room:${dto.roomId}`).emit('roomMessage', payload);
     return payload;
   }
+
+  @SubscribeMessage('typing')
+  handleTyping(
+    @ConnectedSocket() socket: any,
+    @MessageBody() dto: { roomId?: number; receiverId?: number; isTyping: boolean },
+  ) {
+    const senderId = socket.user.id;
+    const payload = { senderId, isTyping: dto.isTyping };
+
+    if (dto.roomId) {
+      // Broadcast to room but not back to sender (to avoid self-typing display if any)
+      socket.to(`room:${dto.roomId}`).emit('typing', { ...payload, roomId: dto.roomId });
+    } else if (dto.receiverId) {
+      const receiverSockets = this.connectedUsers.get(dto.receiverId);
+      if (receiverSockets) {
+        receiverSockets.forEach((s) => socket.to(s).emit('typing', payload));
+      }
+    }
+  }
 }
