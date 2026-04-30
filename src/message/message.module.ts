@@ -2,22 +2,21 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessageGateway } from './message.gateway';
 import { MessageService } from './message.service';
+import { MessageController } from './message.controller';
 import { Message } from './entities/message.entity';
+import { MessageReaction } from './entities/message-reaction.entity';
+import { Room } from './entities/room.entity';
+import { RoomMember } from './entities/room-member.entity';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
-import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message]),
+    TypeOrmModule.forFeature([Message, MessageReaction, Room, RoomMember]),
     AuthModule,
     UserModule,
-    JwtModule.register({
-      secret: process.env.NODE_ENV === 'production' 
-        ? process.env.JWT_SECRET 
-        : process.env.JWT_SECRET ?? "default_secret",
-    }),
   ],
+  controllers: [MessageController],
   providers: [MessageGateway, MessageService],
   exports: [MessageService],
 })

@@ -12,79 +12,151 @@ import { UseGuards } from '@nestjs/common';
 import { MessageService } from './message.service';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { ReactMessageDto } from './dto/react-message.dto';
 
 @WebSocketGateway({
-  cors: {
-    origin: '*',
-  },
-  namespace: 'chat', // You can remove this or customize it based on your featureContext context
+  cors: { origin: '*' },
+  namespace: 'chat',
 })
 @UseGuards(WsJwtGuard)
 export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  // Track connected users: { userId: socketId }
-  private connectedUsers = new Map<number, string>();
+  private connectedUsers = new Map<number, Set<string>>();
 
   constructor(private readonly messageService: MessageService) {}
 
   async handleConnection(socket: Socket) {
-    // Note: User authentication usually happens in a guard before this is reached,
-    // but in NestJS WebSockets, guards are not executed on connection by default.
-    // Instead, they are executed when a @SubscribeMessage is hit.
-    // To protect the connection phase itself, verify the token manually right here.
     console.log(`Client checking connection... socket ${socket.id}`);
   }
 
   handleDisconnect(socket: Socket) {
-    // Find and remove the disconnected user.
-    for (const [userId, socketId] of this.connectedUsers.entries()) {
-      if (socketId === socket.id) {
-        this.connectedUsers.delete(userId);
-        console.log(`User ${userId} disconnected.`);
+    for (const [userId, sockets] of this.connectedUsers.entries()) {
+      if (sockets.has(socket.id)) {
+        sockets.delete(socket.id);
+        if (sockets.size === 0) {
+          this.connectedUsers.delete(userId);
+          console.log(`User ${userId} fully disconnected.`);
+        }
         break;
       }
     }
   }
 
+  // Register & auto-join rooms
+
   @SubscribeMessage('register')
-  handleRegister(@ConnectedSocket() socket: any) {
-    // After WsJwtGuard passes, the user object is attached to the socket.
+  async handleRegister(@ConnectedSocket() socket: any) {
     const userId = socket.user.id;
-    this.connectedUsers.set(userId, socket.id);
-    console.log(`User ${userId} registered with socket ${socket.id}`);
-    
-    return { success: true, message: `Registered successfully` };
+    if (!this.connectedUsers.has(userId)) {
+      this.connectedUsers.set(userId, new Set());
+    }
+    this.connectedUsers.get(userId)!.add(socket.id);
+
+    // Auto-join all Socket.IO rooms the user belongs to
+    const rooms = await this.messageService.getRoomsForUser(userId);
+    for (const room of rooms) {
+      await socket.join(`room:${room.id}`);
+    }
+
+    console.log(`User ${userId} registered, joined ${rooms.length} rooms`);
+    return {
+      success: true,
+      rooms: rooms.map((r) => ({ id: r.id, name: r.name, type: r.type, members: r.members })),
+    };
   }
 
+  // Direct Messages 
+
   @SubscribeMessage('sendMessage')
-  async handleMessage(
-    @ConnectedSocket() socket: any, 
-    @MessageBody() createMessageDto: CreateMessageDto
-  ) {
+  async handleMessage(@ConnectedSocket() socket: any, @MessageBody() dto: CreateMessageDto) {
     const senderId = socket.user.id;
+    const savedMessage = await this.messageService.saveMessage(senderId, dto);
 
-    // Save message to DB
-    const savedMessage = await this.messageService.saveMessage(senderId, createMessageDto);
-
-    // Send to recipient if they are online
-    const receiverSocketId = this.connectedUsers.get(createMessageDto.receiverId);
-    
-    // Always attach the necessary metadata to distinguish the structure over socket.
-    const messageEventPayload = {
+    const payload = {
       id: savedMessage.id,
       content: savedMessage.content,
       senderId: savedMessage.senderId,
       receiverId: savedMessage.receiverId,
+      replyToId: savedMessage.replyToId,
       createdAt: savedMessage.createdAt,
     };
 
-    if (receiverSocketId) {
-      this.server.to(receiverSocketId).emit('receiveMessage', messageEventPayload);
+    const receiverSockets = this.connectedUsers.get(dto.receiverId);
+    if (receiverSockets) {
+      receiverSockets.forEach((socketId) => {
+        this.server.to(socketId).emit('receiveMessage', payload);
+      });
     }
+    return payload;
+  }
 
-    // Acknowledge back to sender
-    return messageEventPayload;
+  @SubscribeMessage('reactToMessage')
+  async handleReaction(@ConnectedSocket() socket: any, @MessageBody() reactDto: ReactMessageDto) {
+    const userId = socket.user.id;
+    const reactionResult = await this.messageService.reactToMessage(userId, reactDto);
+    const message = await this.messageService.findOne(reactDto.messageId);
+
+    if (message) {
+      const payload = {
+        messageId: message.id,
+        userId,
+        emoji: reactDto.emoji,
+        removed: (reactionResult as any).removed || false,
+      };
+
+      if (message.senderId !== userId) {
+        const senderSockets = this.connectedUsers.get(message.senderId);
+        if (senderSockets) senderSockets.forEach((s) => this.server.to(s).emit('messageReaction', payload));
+      }
+      if (message.receiverId !== userId) {
+        const receiverSockets = this.connectedUsers.get(message.receiverId);
+        if (receiverSockets) receiverSockets.forEach((s) => this.server.to(s).emit('messageReaction', payload));
+      }
+      return payload;
+    }
+  }
+
+  // Room Events 
+  @SubscribeMessage('joinRoom')
+  async handleJoinRoom(@ConnectedSocket() socket: any, @MessageBody() data: { roomId: number }) {
+    const userId = socket.user.id;
+    const isMember = await this.messageService.isMember(data.roomId, userId);
+    if (!isMember) return { success: false, error: 'Not a member of this room' };
+    await socket.join(`room:${data.roomId}`);
+    return { success: true };
+  }
+
+  @SubscribeMessage('leaveRoom')
+  async handleLeaveRoom(@ConnectedSocket() socket: any, @MessageBody() data: { roomId: number }) {
+    await socket.leave(`room:${data.roomId}`);
+    return { success: true };
+  }
+
+  @SubscribeMessage('sendRoomMessage')
+  async handleRoomMessage(
+    @ConnectedSocket() socket: any,
+    @MessageBody() dto: { roomId: number; content: string; replyToId?: number },
+  ) {
+    const senderId = socket.user.id;
+    const savedMessage = await this.messageService.saveRoomMessage(senderId, {
+      roomId: dto.roomId,
+      content: dto.content,
+      replyToId: dto.replyToId,
+    });
+
+    const payload = {
+      id: savedMessage.id,
+      content: savedMessage.content,
+      senderId: savedMessage.senderId,
+      roomId: savedMessage.roomId,
+      replyToId: savedMessage.replyToId,
+      createdAt: savedMessage.createdAt,
+    };
+
+    // Broadcast to every socket in the room (all members)
+    this.server.to(`room:${dto.roomId}`).emit('roomMessage', payload);
+    return payload;
   }
 }
