@@ -17,7 +17,11 @@ export class CvHistory1777590856146 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "cv_history"`);
-    await queryRunner.query(`DROP TYPE "public"."cv_history_operationphase_enum"`);
-    await queryRunner.query(`DROP TYPE "public"."cv_history_operationtype_enum"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."cv_history_operationphase_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE "public"."cv_history_operationtype_enum"`,
+    );
   }
 }

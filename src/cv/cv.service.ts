@@ -66,7 +66,9 @@ export class CvService extends GenericService<Cv> {
       return cvs;
     }
 
-    const cvs = await this.cvRepository.find({ where: { user: { id: user.sub } } });
+    const cvs = await this.cvRepository.find({
+      where: { user: { id: user.sub } },
+    });
 
     this.emitReadEvents(cvs, user.sub);
 
@@ -154,7 +156,10 @@ export class CvService extends GenericService<Cv> {
     await this.cvRepository.softDelete(cv.id);
   }
 
-  private async findOneAccessible(id: number, user: PayloadInterface): Promise<Cv> {
+  private async findOneAccessible(
+    id: number,
+    user: PayloadInterface,
+  ): Promise<Cv> {
     const cv =
       user.role === Role.ADMIN
         ? await this.cvRepository.findOne({ where: { id } })
@@ -171,7 +176,10 @@ export class CvService extends GenericService<Cv> {
 
   private emitReadEvents(cvs: Cv[], authorId: number): void {
     for (const cv of cvs) {
-      this.eventEmitter.emit(CvReadEvent.name, new CvReadEvent(authorId, cv.id));
+      this.eventEmitter.emit(
+        CvReadEvent.name,
+        new CvReadEvent(authorId, cv.id),
+      );
     }
   }
 }

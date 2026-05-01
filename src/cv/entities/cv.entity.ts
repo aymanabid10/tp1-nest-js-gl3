@@ -39,5 +39,4 @@ export class Cv extends TimestampEntity {
   @ManyToMany(() => Skill, (skill) => skill.cvs, { eager: true })
   @JoinTable() // JoinTable uniquement du côté propriétaire (Cv)
   skills!: Skill[];
-
 }

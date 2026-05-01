@@ -1,8 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import {
-  CvOperationPhase,
-  CvOperationType,
-} from '../enums/cv-operation.enum';
+import { CvOperationPhase, CvOperationType } from '../enums/cv-operation.enum';
 
 @Entity('cv_history')
 export class CvHistory {

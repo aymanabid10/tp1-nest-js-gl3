@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CvService } from './cv.service';
 import { Cv } from './entities/cv.entity';
@@ -21,6 +22,12 @@ describe('CvService', () => {
             merge: jest.fn(),
             remove: jest.fn(),
             delete: jest.fn(),
+          },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
           },
         },
       ],
