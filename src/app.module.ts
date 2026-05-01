@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { WebhookModule } from './webhook/webhook.module';
 import dbConfig from './config/db.config';
 
 @Module({
@@ -25,6 +26,7 @@ import dbConfig from './config/db.config';
     UserModule,
     SkillModule,
     AuthModule,
+    WebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService],
