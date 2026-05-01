@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-/**
- * Tracks which socket IDs belong to which authenticated users.
- * Extracted from the Gateway to keep the transport layer stateless.
- */
+// Tracks which socket IDs belong to which authenticated users.
+
 @Injectable()
 export class PresenceService {
   private readonly connectedUsers = new Map<number, Set<string>>();

@@ -10,6 +10,17 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ReactMessageDto } from './dto/react-message.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { SendRoomMessageDto } from './dto/send-room-message.dto';
+import { PaginatedResult, PaginationDto } from '../common/dto/pagination.dto';
+import { DmMessageSender } from './strategies/dm-message.sender';
+import { RoomMessageSender } from './strategies/room-message.sender';
+import { MessageSenderStrategy } from './strategies/message-sender.strategy';
+
+export interface ReactionPayload {
+  messageId: number;
+  userId: number;
+  emoji: string;
+  removed: boolean;
+}
 
 @Injectable()
 export class MessageService extends GenericService<Message> {
@@ -26,35 +37,41 @@ export class MessageService extends GenericService<Message> {
     super(messageRepository);
   }
 
-  // Direct Message Methods
+  // Strategy dispatcher 
 
-  async saveMessage(
-    senderId: number,
-    createMessageDto: CreateMessageDto,
-  ): Promise<Message> {
-    const newMessage = this.messageRepository.create({
-      content: createMessageDto.content,
-      senderId: senderId,
-      receiverId: createMessageDto.receiverId,
-      replyToId: createMessageDto.replyToId,
-    });
-    return this.messageRepository.save(newMessage);
+  sendMessage(strategy: MessageSenderStrategy): Promise<Message> {
+    return strategy.send();
   }
 
-  async getConversation(user1Id: number, user2Id: number): Promise<Message[]> {
-    return this.messageRepository.find({
+  // Build a DM sending strategy 
+  createDmSender(senderId: number, dto: CreateMessageDto): DmMessageSender {
+    return new DmMessageSender(senderId, dto, this.messageRepository);
+  }
+
+  //  Build a room sending strategy 
+  createRoomSender(senderId: number, dto: SendRoomMessageDto): RoomMessageSender {
+    return new RoomMessageSender(
+      senderId,
+      dto,
+      this.messageRepository,
+      this.roomMemberRepository,
+    );
+  }
+
+  // Direct Messages 
+
+  getConversation(
+    user1Id: number,
+    user2Id: number,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<Message>> {
+    return this.findAllPaginated(pagination.page, pagination.limit, {
       where: [
         { senderId: user1Id, receiverId: user2Id },
         { senderId: user2Id, receiverId: user1Id },
       ],
-      order: { createdAt: 'ASC' },
-      relations: [
-        'sender',
-        'receiver',
-        'replyTo',
-        'reactions',
-        'reactions.user',
-      ],
+      order: { createdAt: 'DESC' },
+      relations: ['sender', 'receiver', 'replyTo', 'reactions', 'reactions.user'],
     });
   }
 
@@ -79,18 +96,34 @@ export class MessageService extends GenericService<Message> {
     return this.reactionRepository.save(newReaction);
   }
 
-  async reactToMessageWithContext(
+  // Handles a reaction toggle and returns a ready-to-emit payload plus
+  // the list of user IDs that should be notified 
+ 
+  async reactAndBuildPayload(
     userId: number,
     reactDto: ReactMessageDto,
-  ): Promise<{ reaction: Record<string, any>; message: Message | null }> {
+  ): Promise<{ payload: ReactionPayload; notifyUserIds: number[] } | null> {
     const reaction = await this.reactToMessage(userId, reactDto);
-    const message = await this.messageRepository.findOne({
-      where: { id: reactDto.messageId },
-    });
-    return { reaction, message };
+
+    const message = await this.findOne(reactDto.messageId);
+    if (!message) return null;
+
+    const payload: ReactionPayload = {
+      messageId: message.id,
+      userId,
+      emoji: reactDto.emoji,
+      removed: (reaction as any).removed ?? false,
+    };
+
+    // Determine who should be notified (sender + receiver, excluding reactor)
+    const notifyUserIds = [message.senderId, message.receiverId].filter(
+      (id): id is number => id !== undefined && id !== null && id !== userId,
+    );
+
+    return { payload, notifyUserIds };
   }
 
-  // Room Methods
+  // Rooms
 
   async createRoom(creatorId: number, dto: CreateRoomDto): Promise<Room> {
     const room = this.roomRepository.create({
@@ -99,7 +132,7 @@ export class MessageService extends GenericService<Message> {
     });
     const savedRoom = await this.roomRepository.save(room);
 
-    // Add creator + all specified members
+    // Add creator + all specified members 
     const memberIds = [...new Set([creatorId, ...dto.memberIds])];
     const members = memberIds.map((userId) =>
       this.roomMemberRepository.create({ roomId: savedRoom.id, userId }),
@@ -112,12 +145,10 @@ export class MessageService extends GenericService<Message> {
     }) as Promise<Room>;
   }
 
-  async getRoomsForUser(userId: number): Promise<Room[]> {
+  getRoomsForUser(userId: number): Promise<Room[]> {
     return this.roomRepository
       .createQueryBuilder('room')
-      .innerJoin('room.members', 'member', 'member.userId = :userId', {
-        userId,
-      })
+      .innerJoin('room.members', 'member', 'member.userId = :userId', { userId })
       .leftJoinAndSelect('room.members', 'allMembers')
       .leftJoinAndSelect('allMembers.user', 'user')
       .orderBy('room.createdAt', 'DESC')
@@ -131,46 +162,33 @@ export class MessageService extends GenericService<Message> {
     return !!member;
   }
 
-  async getRoomHistory(roomId: number, userId: number): Promise<Message[]> {
+  async getRoomHistory(
+    roomId: number,
+    userId: number,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<Message>> {
     const member = await this.isMember(roomId, userId);
-    if (!member)
-      throw new ForbiddenException('You are not a member of this room');
+    if (!member) throw new ForbiddenException('You are not a member of this room');
 
-    return this.messageRepository.find({
+    return this.findAllPaginated(pagination.page, pagination.limit, {
       where: { roomId },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: 'DESC' },
       relations: ['sender', 'replyTo', 'reactions', 'reactions.user'],
     });
   }
 
-  async saveRoomMessage(
-    senderId: number,
-    dto: SendRoomMessageDto,
-  ): Promise<Message> {
-    const member = await this.isMember(dto.roomId, senderId);
-    if (!member)
-      throw new ForbiddenException('You are not a member of this room');
-
-    const message = this.messageRepository.create({
-      content: dto.content,
-      senderId,
-      roomId: dto.roomId,
-      replyToId: dto.replyToId,
-    });
-    return this.messageRepository.save(message);
-  }
-
-  async getRoomMembers(roomId: number): Promise<RoomMember[]> {
+  getRoomMembers(roomId: number): Promise<RoomMember[]> {
     return this.roomMemberRepository.find({
       where: { roomId },
       relations: ['user'],
     });
   }
 
+  // Presence helpers 
 
-  // Returns all unique user IDs that are "contacts" of the given user:
-  //  Users who share at least one room with them
-  //  Users they have exchanged a direct message with
+    // Users who share at least one room with them
+    // Users they have exchanged a direct message with
+
   async getContactUserIds(userId: number): Promise<number[]> {
     const [roomContacts, dmContacts] = await Promise.all([
       // Room contacts
