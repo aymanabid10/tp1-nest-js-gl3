@@ -298,6 +298,7 @@
 
     // ─── Global State & Notifications ─────────────────────────────────────
     let allUsers = [];
+    let onlineUsers = new Set();
     let unreadCounts = { dm: {}, room: {} };
     let totalUnread = 0;
 
@@ -411,13 +412,20 @@
         const displayName = u.username || u.email;
         const colors = ['from-blue-500 to-indigo-500','from-violet-500 to-purple-500','from-emerald-500 to-teal-500','from-orange-400 to-red-500','from-pink-500 to-rose-500'];
         const color = colors[u.id % colors.length];
+        const isOnline = onlineUsers.has(u.id);
+        const statusDot = isOnline
+          ? `<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-white rounded-full"></span>`
+          : `<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-slate-300 border-2 border-white rounded-full"></span>`;
         return `
           <div id="user-item-${u.id}" onclick="selectUser(${u.id}, '${displayName}', '${initials}', '${color}')"
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white hover:shadow-sm transition-all group">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-tr ${color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initials}</div>
+            <div class="relative w-9 h-9 flex-shrink-0">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-tr ${color} flex items-center justify-center text-white font-bold text-sm">${initials}</div>
+              ${statusDot}
+            </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold text-slate-700 truncate group-hover:text-blue-600">${displayName}</p>
-              <p class="text-xs text-slate-400">ID: ${u.id}</p>
+              <p class="text-xs ${isOnline ? 'text-green-500 font-medium' : 'text-slate-400'}">${isOnline ? '● Online' : '○ Offline'}</p>
             </div>
             ${unreadCounts.dm[u.id] ? `<div class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto shadow-sm">${unreadCounts.dm[u.id]}</div>` : ''}
           </div>`;
@@ -508,14 +516,28 @@
       socket.on("connect", () => {
         socket.emit("register", {}, (res) => {
           console.log("Register ACK:", res);
-          // Seed room list from register ACK
           if (res && res.rooms) renderRoomList(res.rooms);
+          // Seed the online users set from the server's current snapshot
+          if (res && res.onlineUserIds) {
+            onlineUsers = new Set(res.onlineUserIds);
+            renderUserList(allUsers);
+          }
         });
       });
 
       socket.on("exception", (err) => {
         console.error("Socket Exception:", err);
         alert("Error: " + (err.message || "Validation failed"));
+      });
+
+      socket.on("userOnline", ({ userId }) => {
+        onlineUsers.add(userId);
+        renderUserList(allUsers);
+      });
+
+      socket.on("userOffline", ({ userId }) => {
+        onlineUsers.delete(userId);
+        renderUserList(allUsers);
       });
 
       // DM incoming message — only show if we're in DM mode with that sender
