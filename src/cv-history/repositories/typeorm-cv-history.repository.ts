@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CvHistory } from '../../domain/entities/cv-history.entity';
-import { CvHistoryRepositoryInterface } from '../../domain/ports/cv-history.repository.interface';
+import { CvHistory } from '../entities/cv-history.entity';
+import { CvHistoryRepositoryInterface } from './cv-history.repository.interface';
 
 @Injectable()
 export class TypeOrmCvHistoryRepository implements CvHistoryRepositoryInterface {

@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CvHistory } from '../../domain/entities/cv-history.entity';
+import { CvHistory } from './entities/cv-history.entity';
 import {
   CV_HISTORY_REPOSITORY,
   CvHistoryRepositoryInterface,
-} from '../../domain/ports/cv-history.repository.interface';
+} from './repositories/cv-history.repository.interface';
 
 @Injectable()
-export class GetCvHistoryUseCase {
+export class CvHistoryService {
   constructor(
     @Inject(CV_HISTORY_REPOSITORY)
     private readonly cvHistoryRepository: CvHistoryRepositoryInterface,

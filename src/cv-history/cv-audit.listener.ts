@@ -1,19 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { CvHistory } from '../../domain/entities/cv-history.entity';
-import {
-  CvOperationPhase,
-  CvOperationType,
-} from '../../domain/enums/cv-operation.enum';
-import { CvCreateStartedEvent } from '../../domain/events/cv-create-started.event';
-import { CvCreatedEvent } from '../../domain/events/cv-created.event';
-import { CvReadEvent } from '../../domain/events/cv-read.event';
-import { CvUpdateStartedEvent } from '../../domain/events/cv-update-started.event';
-import { CvUpdatedEvent } from '../../domain/events/cv-updated.event';
+import { CvHistory } from './entities/cv-history.entity';
+import { CvOperationPhase, CvOperationType } from './enums/cv-operation.enum';
+import { CvCreateStartedEvent } from './events/cv-create-started.event';
+import { CvCreatedEvent } from './events/cv-created.event';
+import { CvReadEvent } from './events/cv-read.event';
+import { CvUpdateStartedEvent } from './events/cv-update-started.event';
+import { CvUpdatedEvent } from './events/cv-updated.event';
 import {
   CV_HISTORY_REPOSITORY,
   CvHistoryRepositoryInterface,
-} from '../../domain/ports/cv-history.repository.interface';
+} from './repositories/cv-history.repository.interface';
 
 @Injectable()
 export class CvAuditListener {

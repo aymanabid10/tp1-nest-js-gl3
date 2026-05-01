@@ -1,8 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  CvOperationPhase,
-  CvOperationType,
-} from '../../domain/enums/cv-operation.enum';
+import { CvOperationPhase, CvOperationType } from '../enums/cv-operation.enum';
 
 export class CvHistoryResponseDto {
   @ApiProperty({ example: '5de8e4af-bf7d-4f6f-93a9-cf4a0f472d3e' })

@@ -10,11 +10,11 @@ import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { GenericService } from '../common/services/generic.service';
-import { CvCreateStartedEvent } from 'src/cv-history/domain/events/cv-create-started.event';
-import { CvCreatedEvent } from 'src/cv-history/domain/events/cv-created.event';
-import { CvReadEvent } from 'src/cv-history/domain/events/cv-read.event';
-import { CvUpdateStartedEvent } from 'src/cv-history/domain/events/cv-update-started.event';
-import { CvUpdatedEvent } from 'src/cv-history/domain/events/cv-updated.event';
+import { CvCreateStartedEvent } from 'src/cv-history/events/cv-create-started.event';
+import { CvCreatedEvent } from 'src/cv-history/events/cv-created.event';
+import { CvReadEvent } from 'src/cv-history/events/cv-read.event';
+import { CvUpdateStartedEvent } from 'src/cv-history/events/cv-update-started.event';
+import { CvUpdatedEvent } from 'src/cv-history/events/cv-updated.event';
 
 @Injectable()
 export class CvService extends GenericService<Cv> {
