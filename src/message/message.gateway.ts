@@ -8,7 +8,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { MessageService } from './message.service';
 import { PresenceService } from './presence.service';
 import { WsJwtGuard } from '../auth/guards/ws-jwt.guard';
@@ -16,12 +16,11 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ReactMessageDto } from './dto/react-message.dto';
 import { SendRoomMessageDto } from './dto/send-room-message.dto';
 import type { AuthenticatedSocket } from './types/authenticated-socket.interface';
+import { GATEWAY_OPTIONS } from './constants/gateway.config';
 
-@WebSocketGateway({
-  cors: { origin: '*' },
-  namespace: 'chat',
-})
+@WebSocketGateway(GATEWAY_OPTIONS)
 @UseGuards(WsJwtGuard)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
 export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -33,7 +32,6 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     private readonly presenceService: PresenceService,
   ) {}
 
-  // Lifecycle 
   handleConnection(socket: AuthenticatedSocket) {
     this.logger.log(`Client connected: ${socket.id}`);
   }
@@ -42,12 +40,11 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     const userId = this.presenceService.removeSocket(socket.id);
     if (userId) {
       this.logger.log(`User ${userId} fully disconnected.`);
-      // Notify only the contacts of this user, not everyone
       void this.notifyContacts(userId, 'userOffline', { userId });
     }
   }
 
-  //  Register & Auto-join Rooms 
+  // Registration 
 
   @SubscribeMessage('register')
   async handleRegister(@ConnectedSocket() socket: AuthenticatedSocket) {
@@ -59,10 +56,9 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
       await socket.join(`room:${room.id}`);
     }
 
-    // Notify only relevant contacts (room-mates & DM partners) that this user came online
     void this.notifyContacts(userId, 'userOnline', { userId });
-
     this.logger.log(`User ${userId} registered, joined ${rooms.length} rooms`);
+
     return {
       success: true,
       onlineUserIds: this.presenceService.getOnlineUserIds(),
@@ -70,77 +66,26 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     };
   }
 
-  // Send an event only to the online sockets of a user's contacts
-  private async notifyContacts(userId: number, event: string, payload: object): Promise<void> {
-    const contactIds = await this.messageService.getContactUserIds(userId);
-    for (const contactId of contactIds) {
-      if (this.presenceService.isOnline(contactId)) {
-        const sockets = this.presenceService.getSocketIds(contactId);
-        sockets?.forEach((s) => this.server.to(s).emit(event, payload));
-      }
-    }
-  }
-
   // Direct Messages 
-
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() dto: CreateMessageDto,
   ) {
-    const senderId = socket.user.id;
-    const savedMessage = await this.messageService.saveMessage(senderId, dto);
+    const strategy = this.messageService.createDmSender(socket.user.id, dto);
+    const saved = await this.messageService.sendMessage(strategy);
 
-    if (this.presenceService.isOnline(dto.receiverId)) {
-      const receiverSockets = this.presenceService.getSocketIds(dto.receiverId);
-      receiverSockets!.forEach((socketId) => {
-        this.server.to(socketId).emit('receiveMessage', savedMessage);
-      });
-    }
-    return savedMessage;
+    this.emitToUser(dto.receiverId, 'receiveMessage', saved);
+    return saved;
   }
 
-  @SubscribeMessage('reactToMessage')
-  async handleReaction(
-    @ConnectedSocket() socket: AuthenticatedSocket,
-    @MessageBody() reactDto: ReactMessageDto,
-  ) {
-    const userId = socket.user.id;
-    const { reaction, message } = await this.messageService.reactToMessageWithContext(userId, reactDto);
-
-    if (!message) return;
-
-    const payload = {
-      messageId: message.id,
-      userId,
-      emoji: reactDto.emoji,
-      removed: (reaction as any).removed || false,
-    };
-
-    // Notify both parties  sender and receiver of the original message
-    const notifyUserIds = [message.senderId, message.receiverId].filter(
-      (id) => id !== undefined && id !== userId,
-    ) as number[];
-
-    for (const targetId of notifyUserIds) {
-      const sockets = this.presenceService.getSocketIds(targetId);
-      if (sockets) {
-        sockets.forEach((s) => this.server.to(s).emit('messageReaction', payload));
-      }
-    }
-
-    return payload;
-  }
-
-  // Room Events 
-
+  //Room Events 
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() data: { roomId: number },
   ) {
-    const userId = socket.user.id;
-    const isMember = await this.messageService.isMember(data.roomId, userId);
+    const isMember = await this.messageService.isMember(data.roomId, socket.user.id);
     if (!isMember) return { success: false, error: 'Not a member of this room' };
     await socket.join(`room:${data.roomId}`);
     return { success: true };
@@ -160,29 +105,57 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() dto: SendRoomMessageDto,
   ) {
-    const senderId = socket.user.id;
-    const savedMessage = await this.messageService.saveRoomMessage(senderId, dto);
+    const strategy = this.messageService.createRoomSender(socket.user.id, dto);
+    const saved = await this.messageService.sendMessage(strategy);
 
-    this.server.to(`room:${dto.roomId}`).emit('roomMessage', savedMessage);
-    return savedMessage;
+    this.server.to(`room:${dto.roomId}`).emit('roomMessage', saved);
+    return saved;
   }
 
+  // Reactions 
+
+  @SubscribeMessage('reactToMessage')
+  async handleReaction(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() dto: ReactMessageDto,
+  ) {
+    const result = await this.messageService.reactAndBuildPayload(socket.user.id, dto);
+    if (!result) return;
+
+    const { payload, notifyUserIds } = result;
+    notifyUserIds.forEach((id) => this.emitToUser(id, 'messageReaction', payload));
+    return payload;
+  }
+
+  // Typing 
 
   @SubscribeMessage('typing')
   handleTyping(
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() dto: { roomId?: number; receiverId?: number; isTyping: boolean },
   ) {
-    const senderId = socket.user.id;
-    const payload = { senderId, isTyping: dto.isTyping };
+    const payload = { senderId: socket.user.id, isTyping: dto.isTyping };
 
     if (dto.roomId) {
       socket.to(`room:${dto.roomId}`).emit('typing', { ...payload, roomId: dto.roomId });
     } else if (dto.receiverId) {
-      const receiverSockets = this.presenceService.getSocketIds(dto.receiverId);
-      if (receiverSockets) {
-        receiverSockets.forEach((s) => socket.to(s).emit('typing', payload));
-      }
+      this.emitToUser(dto.receiverId, 'typing', payload);
     }
+  }
+
+  // Private helpers
+
+  //Emit an event to all active sockets of a given user (if online)
+  private emitToUser(userId: number, event: string, payload: object): void {
+    if (!this.presenceService.isOnline(userId)) return;
+    this.presenceService.getSocketIds(userId)?.forEach((s) =>
+      this.server.to(s).emit(event, payload),
+    );
+  }
+
+  // Emit an event to all online contacts of a given user
+  private async notifyContacts(userId: number, event: string, payload: object): Promise<void> {
+    const contactIds = await this.messageService.getContactUserIds(userId);
+    contactIds.forEach((contactId) => this.emitToUser(contactId, event, payload));
   }
 }

@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   Req,
   UseGuards,
@@ -12,27 +13,28 @@ import { MessageService } from './message.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interface/authenticated-request.interface';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
-  // Direct Message History
+  // Direct Messages
 
   @Get('history/:otherUserId')
-  async getConversation(
+  getConversation(
     @Req() req: AuthenticatedRequest,
     @Param('otherUserId', ParseIntPipe) otherUserId: number,
+    @Query() pagination: PaginationDto,
   ) {
-    const currentUserId = req.user.sub;
-    return this.messageService.getConversation(currentUserId, otherUserId);
+    return this.messageService.getConversation(req.user.sub, otherUserId, pagination);
   }
 
-  // Rooms
+  //Rooms 
 
   @Post('rooms')
-  async createRoom(
+  createRoom(
     @Req() req: AuthenticatedRequest,
     @Body() dto: CreateRoomDto,
   ) {
@@ -40,15 +42,16 @@ export class MessageController {
   }
 
   @Get('rooms')
-  async getMyRooms(@Req() req: AuthenticatedRequest) {
+  getMyRooms(@Req() req: AuthenticatedRequest) {
     return this.messageService.getRoomsForUser(req.user.sub);
   }
 
   @Get('rooms/:roomId/history')
-  async getRoomHistory(
+  getRoomHistory(
     @Req() req: AuthenticatedRequest,
     @Param('roomId', ParseIntPipe) roomId: number,
+    @Query() pagination: PaginationDto,
   ) {
-    return this.messageService.getRoomHistory(roomId, req.user.sub);
+    return this.messageService.getRoomHistory(roomId, req.user.sub, pagination);
   }
 }
