@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessageGateway } from './message.gateway';
 import { MessageService } from './message.service';
 import { MessageController } from './message.controller';
+import { PresenceService } from './presence.service';
 import { Message } from './entities/message.entity';
 import { MessageReaction } from './entities/message-reaction.entity';
 import { Room } from './entities/room.entity';
@@ -17,7 +18,8 @@ import { UserModule } from '../user/user.module';
     UserModule,
   ],
   controllers: [MessageController],
-  providers: [MessageGateway, MessageService],
+  providers: [MessageGateway, MessageService, PresenceService],
   exports: [MessageService],
 })
 export class MessageModule {}
+

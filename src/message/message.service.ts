@@ -67,6 +67,16 @@ export class MessageService extends GenericService<Message> {
     return this.reactionRepository.save(newReaction);
   }
 
+  async reactToMessageWithContext(
+    userId: number,
+    reactDto: ReactMessageDto,
+  ): Promise<{ reaction: Record<string, any>; message: Message | null }> {
+    const reaction = await this.reactToMessage(userId, reactDto);
+    const message = await this.messageRepository.findOne({ where: { id: reactDto.messageId } });
+    return { reaction, message };
+  }
+
+
   // Room Methods 
 
   async createRoom(creatorId: number, dto: CreateRoomDto): Promise<Room> {
@@ -136,5 +146,48 @@ export class MessageService extends GenericService<Message> {
       where: { roomId },
       relations: ['user'],
     });
+  }
+
+  /**
+   * Returns all unique user IDs that are "contacts" of the given user:
+   * - Users who share at least one room with them
+   * - Users they have exchanged a direct message with
+   */
+  async getContactUserIds(userId: number): Promise<number[]> {
+    const [roomContacts, dmContacts] = await Promise.all([
+      // Room contacts
+      this.roomMemberRepository
+        .createQueryBuilder('rm')
+        .select('rm.userId', 'userId')
+        .distinct(true)
+        .innerJoin(
+          RoomMember,
+          'myMembership',
+          'myMembership.roomId = rm.roomId AND myMembership.userId = :userId',
+          { userId },
+        )
+        .where('rm.userId != :userId', { userId })
+        .getRawMany<{ userId: number }>(),
+
+      // DM contacts
+      this.messageRepository
+        .createQueryBuilder('m')
+        .select(
+          `CASE WHEN m.senderId = :userId THEN m.receiverId ELSE m.senderId END`,
+          'userId',
+        )
+        .distinct(true)
+        .where('(m.senderId = :userId OR m.receiverId = :userId)', { userId })
+        .andWhere('m.roomId IS NULL')
+        .getRawMany<{ userId: number }>(),
+    ]);
+
+    // Merge, cast to number, deduplicate, and exclude self and nulls
+    const allIds = [
+      ...roomContacts.map((r) => Number(r.userId)),
+      ...dmContacts.map((r) => Number(r.userId)),
+    ].filter((id) => !isNaN(id) && id !== userId);
+
+    return [...new Set(allIds)];
   }
 }
