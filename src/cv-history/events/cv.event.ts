@@ -10,6 +10,12 @@ export enum CvEventType {
   DELETED = 'DELETED',
 }
 
+export const CV_PERSISTENCE_EVENT_TYPES = [
+  CvEventType.CREATED,
+  CvEventType.UPDATED,
+  CvEventType.DELETED,
+] as const;
+
 export class CvEvent {
   constructor(
     public readonly eventType: CvEventType,
