@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseIntPipe,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { MessageService } from './message.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interface/authenticated-request.interface';
@@ -23,7 +32,10 @@ export class MessageController {
   // Rooms
 
   @Post('rooms')
-  async createRoom(@Req() req: AuthenticatedRequest, @Body() dto: CreateRoomDto) {
+  async createRoom(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateRoomDto,
+  ) {
     return this.messageService.createRoom(req.user.sub, dto);
   }
 

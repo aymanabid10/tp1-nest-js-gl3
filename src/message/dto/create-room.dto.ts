@@ -5,9 +5,6 @@ export class CreateRoomDto {
   @IsOptional()
   name?: string;
 
-  @IsEnum(['private', 'group'])
-  type: 'private' | 'group';
-
   @IsArray()
   @IsNumber({}, { each: true })
   memberIds: number[];

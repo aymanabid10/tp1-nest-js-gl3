@@ -66,7 +66,7 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
     return {
       success: true,
       onlineUserIds: this.presenceService.getOnlineUserIds(),
-      rooms: rooms.map((r) => ({ id: r.id, name: r.name, type: r.type, members: r.members })),
+      rooms: rooms.map((r) => ({ id: r.id, name: r.name, members: r.members })),
     };
   }
 

@@ -11,8 +11,6 @@ import { TimestampEntity } from '../../shared/entities/time-stamp.entity';
 import { Message } from './message.entity';
 import { RoomMember } from './room-member.entity';
 
-export type RoomType = 'private' | 'group';
-
 @Entity('rooms')
 export class Room extends TimestampEntity {
   @PrimaryGeneratedColumn()
@@ -20,9 +18,6 @@ export class Room extends TimestampEntity {
 
   @Column({ nullable: true })
   name: string;
-
-  @Column({ type: 'varchar', default: 'group' })
-  type: RoomType;
 
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'createdBy' })

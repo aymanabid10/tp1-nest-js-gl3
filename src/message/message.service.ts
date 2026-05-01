@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
@@ -26,9 +26,12 @@ export class MessageService extends GenericService<Message> {
     super(messageRepository);
   }
 
-  // Direct Message Methods 
+  // Direct Message Methods
 
-  async saveMessage(senderId: number, createMessageDto: CreateMessageDto): Promise<Message> {
+  async saveMessage(
+    senderId: number,
+    createMessageDto: CreateMessageDto,
+  ): Promise<Message> {
     const newMessage = this.messageRepository.create({
       content: createMessageDto.content,
       senderId: senderId,
@@ -45,11 +48,20 @@ export class MessageService extends GenericService<Message> {
         { senderId: user2Id, receiverId: user1Id },
       ],
       order: { createdAt: 'ASC' },
-      relations: ['sender', 'receiver', 'replyTo', 'reactions', 'reactions.user'],
+      relations: [
+        'sender',
+        'receiver',
+        'replyTo',
+        'reactions',
+        'reactions.user',
+      ],
     });
   }
 
-  async reactToMessage(userId: number, reactDto: ReactMessageDto): Promise<MessageReaction | { removed: boolean }> {
+  async reactToMessage(
+    userId: number,
+    reactDto: ReactMessageDto,
+  ): Promise<MessageReaction | { removed: boolean }> {
     const existing = await this.reactionRepository.findOne({
       where: { userId, messageId: reactDto.messageId, emoji: reactDto.emoji },
     });
@@ -72,17 +84,17 @@ export class MessageService extends GenericService<Message> {
     reactDto: ReactMessageDto,
   ): Promise<{ reaction: Record<string, any>; message: Message | null }> {
     const reaction = await this.reactToMessage(userId, reactDto);
-    const message = await this.messageRepository.findOne({ where: { id: reactDto.messageId } });
+    const message = await this.messageRepository.findOne({
+      where: { id: reactDto.messageId },
+    });
     return { reaction, message };
   }
 
-
-  // Room Methods 
+  // Room Methods
 
   async createRoom(creatorId: number, dto: CreateRoomDto): Promise<Room> {
     const room = this.roomRepository.create({
       name: dto.name,
-      type: dto.type,
       createdBy: creatorId,
     });
     const savedRoom = await this.roomRepository.save(room);
@@ -103,7 +115,9 @@ export class MessageService extends GenericService<Message> {
   async getRoomsForUser(userId: number): Promise<Room[]> {
     return this.roomRepository
       .createQueryBuilder('room')
-      .innerJoin('room.members', 'member', 'member.userId = :userId', { userId })
+      .innerJoin('room.members', 'member', 'member.userId = :userId', {
+        userId,
+      })
       .leftJoinAndSelect('room.members', 'allMembers')
       .leftJoinAndSelect('allMembers.user', 'user')
       .orderBy('room.createdAt', 'DESC')
@@ -119,7 +133,8 @@ export class MessageService extends GenericService<Message> {
 
   async getRoomHistory(roomId: number, userId: number): Promise<Message[]> {
     const member = await this.isMember(roomId, userId);
-    if (!member) throw new ForbiddenException('You are not a member of this room');
+    if (!member)
+      throw new ForbiddenException('You are not a member of this room');
 
     return this.messageRepository.find({
       where: { roomId },
@@ -128,9 +143,13 @@ export class MessageService extends GenericService<Message> {
     });
   }
 
-  async saveRoomMessage(senderId: number, dto: SendRoomMessageDto): Promise<Message> {
+  async saveRoomMessage(
+    senderId: number,
+    dto: SendRoomMessageDto,
+  ): Promise<Message> {
     const member = await this.isMember(dto.roomId, senderId);
-    if (!member) throw new ForbiddenException('You are not a member of this room');
+    if (!member)
+      throw new ForbiddenException('You are not a member of this room');
 
     const message = this.messageRepository.create({
       content: dto.content,
@@ -148,11 +167,10 @@ export class MessageService extends GenericService<Message> {
     });
   }
 
-  /**
-   * Returns all unique user IDs that are "contacts" of the given user:
-   * - Users who share at least one room with them
-   * - Users they have exchanged a direct message with
-   */
+
+  // Returns all unique user IDs that are "contacts" of the given user:
+  //  Users who share at least one room with them
+  //  Users they have exchanged a direct message with
   async getContactUserIds(userId: number): Promise<number[]> {
     const [roomContacts, dmContacts] = await Promise.all([
       // Room contacts
