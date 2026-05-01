@@ -302,6 +302,12 @@
     let unreadCounts = { dm: {}, room: {} };
     let totalUnread = 0;
 
+    // Pagination state for history infinite scroll
+    let historyPage = 1;
+    let historyTotalPages = 1;
+    let isLoadingMore = false;
+    const HISTORY_LIMIT = 20;
+
     function updateDocumentTitle() {
       totalUnread = Object.values(unreadCounts.dm).reduce((a,b)=>a+b,0) + Object.values(unreadCounts.room).reduce((a,b)=>a+b,0);
       document.title = totalUnread > 0 ? `(${totalUnread}) New Message - Chat` : 'tp1-nest-js-gl3 Chat';
@@ -463,6 +469,9 @@
       const activeItem = document.getElementById(`user-item-${id}`);
       if (activeItem) activeItem.classList.add('bg-blue-50', 'shadow-sm');
 
+      historyPage = 1;
+      historyTotalPages = 1;
+      isLoadingMore = false;
       loadHistory();
     }
 
@@ -470,31 +479,140 @@
       const rx = document.getElementById("receiverId").value;
       if (!rx || !jwtToken) return;
 
+      // Reset pagination state for this fresh load
+      historyPage = 1;
+      historyTotalPages = 1;
+
       try {
-        const res = await fetch(`${API_URL}/messages/history/${rx}`, {
+        const res = await fetch(`${API_URL}/messages/history/${rx}?page=1&limit=${HISTORY_LIMIT}`, {
           headers: { "Authorization": `Bearer ${jwtToken}` }
         });
         if (res.ok) {
-          const messages = await res.json();
+          const result = await res.json();
+          historyTotalPages = result.totalPages ?? 1;
+          // API returns DESC (newest first); reverse to render oldest at top
+          const messages = (result.data ?? result).reverse();
           document.getElementById("chatBox").innerHTML = "";
-          messages.forEach(msg => {
-            renderMessage(msg, msg.senderId === myUserId);
-            if (msg.reactions && msg.reactions.length > 0) {
-              msg.reactions.forEach(reaction => {
-                updateReactionUI({
-                  messageId: msg.id,
-                  userId: reaction.userId || (reaction.user && reaction.user.id),
-                  emoji: reaction.emoji,
-                  removed: false
-                });
-              });
-            }
-          });
+          renderMessageBatch(messages);
+          // Scroll to bottom to show latest messages
+          const box = document.getElementById("chatBox");
+          box.scrollTop = box.scrollHeight;
         }
       } catch(e) {
         console.error("Error loading chat history:", e);
       }
     }
+
+    async function loadMoreHistory() {
+      if (isLoadingMore || historyPage >= historyTotalPages) return;
+      isLoadingMore = true;
+
+      const box = document.getElementById("chatBox");
+      const prevScrollHeight = box.scrollHeight;
+
+      // Show a loading indicator at top
+      const loader = document.createElement('div');
+      loader.id = 'history-loader';
+      loader.className = 'text-center text-xs text-slate-400 py-2 flex items-center justify-center gap-1';
+      loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading older messages...';
+      box.prepend(loader);
+
+      try {
+        const nextPage = historyPage + 1;
+        let url;
+        if (currentRoomId) {
+          url = `${API_URL}/messages/rooms/${currentRoomId}/history?page=${nextPage}&limit=${HISTORY_LIMIT}`;
+        } else {
+          const rx = document.getElementById("receiverId").value;
+          if (!rx) { loader.remove(); isLoadingMore = false; return; }
+          url = `${API_URL}/messages/history/${rx}?page=${nextPage}&limit=${HISTORY_LIMIT}`;
+        }
+
+        const res = await fetch(url, { headers: { "Authorization": `Bearer ${jwtToken}` } });
+        if (res.ok) {
+          const result = await res.json();
+          historyPage = nextPage;
+          historyTotalPages = result.totalPages ?? historyTotalPages;
+          // These are older messages (higher page in DESC order = older)
+          const messages = (result.data ?? result).reverse();
+
+          loader.remove();
+          // Prepend older messages to top
+          messages.forEach(msg => {
+            const el = buildMessageElement(msg, msg.senderId === myUserId);
+            box.prepend(el);
+            if (msg.reactions && msg.reactions.length > 0) {
+              msg.reactions.forEach(reaction => {
+                updateReactionUI({ messageId: msg.id, userId: reaction.userId || (reaction.user && reaction.user.id), emoji: reaction.emoji, removed: false });
+              });
+            }
+          });
+
+          if (historyPage >= historyTotalPages) {
+            const endBanner = document.createElement('div');
+            endBanner.className = 'text-center text-xs text-slate-300 py-2';
+            endBanner.textContent = '— Beginning of conversation —';
+            box.prepend(endBanner);
+          }
+
+          // Restore scroll position so user stays at the same visual spot
+          box.scrollTop = box.scrollHeight - prevScrollHeight;
+        } else {
+          loader.remove();
+        }
+      } catch(e) {
+        console.error('Error loading more history:', e);
+        document.getElementById('history-loader')?.remove();
+      } finally {
+        isLoadingMore = false;
+      }
+    }
+
+    // Build a message DOM element without appending it (used for prepending older messages)
+    function buildMessageElement(msg, isSent) {
+      if (document.getElementById(`msg-${msg.id}`)) {
+        return document.createElement('div'); // skip duplicate
+      }
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex w-full msg-enter ${isSent ? 'justify-end' : 'justify-start'}`;
+      wrapper.id = `msg-${msg.id}`;
+
+      let replyHtml = '';
+      if (msg.replyToId) {
+        let replyContent = msg.replyTo?.content ?? 'Message snippet...';
+        if (replyContent.length > 60) replyContent = replyContent.substring(0, 60) + '...';
+        const replyStyles = isSent ? 'bg-blue-700/30 text-blue-100 border-l-2 border-blue-300' : 'bg-slate-100 text-slate-500 border-l-2 border-slate-300';
+        replyHtml = `<div class="flex flex-col text-[11px] ${replyStyles} rounded-md px-2 py-1 mb-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('msg-${msg.replyToId}')?.scrollIntoView({behavior:'smooth',block:'center'})"><div class="flex items-center gap-1 mb-0.5"><i class="fas fa-reply text-[9px]"></i><span class="font-semibold opacity-90">Replied</span></div><span class="truncate max-w-[200px] opacity-90 italic">"${replyContent}"</span></div>`;
+      }
+
+      const actionsHtml = `<div class="absolute ${isSent ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-md border border-slate-100 rounded-full px-1.5 py-1 z-10 w-max"><button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '👍')">👍</button><button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '❤️')">❤️</button><button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="reactTo(${msg.id}, '😂')">😂</button><button class="reaction-btn hover:bg-slate-100 p-1.5 rounded-full text-sm leading-none" onclick="initReply(${msg.id})"><i class="fas fa-reply text-slate-400 text-xs"></i></button></div>`;
+
+      const bubbleColor = isSent ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm';
+      const timeDate = msg.createdAt ? new Date(msg.createdAt) : new Date();
+      const time = timeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      wrapper.innerHTML = `<div class="max-w-[75%] relative group flex flex-col">${actionsHtml}${replyHtml}<div class="${bubbleColor} px-4 py-2.5 shadow-sm relative"><p class="text-sm break-words">${msg.content}</p><div class="text-[10px] ${isSent ? 'text-blue-200' : 'text-slate-400'} text-right mt-1 font-medium">#${msg.id} • ${time}</div><div id="reactions-${msg.id}" class="absolute -bottom-3 ${isSent ? 'right-2' : 'left-2'} flex gap-1 flex-wrap z-20"></div></div></div>`;
+      return wrapper;
+    }
+
+    function renderMessageBatch(messages) {
+      messages.forEach(msg => {
+        const el = buildMessageElement(msg, msg.senderId === myUserId);
+        document.getElementById('chatBox').appendChild(el);
+        if (msg.reactions && msg.reactions.length > 0) {
+          msg.reactions.forEach(reaction => {
+            updateReactionUI({ messageId: msg.id, userId: reaction.userId || (reaction.user && reaction.user.id), emoji: reaction.emoji, removed: false });
+          });
+        }
+      });
+    }
+
+    // Attach scroll listener once
+    document.getElementById('chatBox').addEventListener('scroll', function() {
+      if (this.scrollTop < 60 && !isLoadingMore && historyPage < historyTotalPages) {
+        loadMoreHistory();
+      }
+    });
 
     function logout() {
       if(socket) socket.disconnect();
@@ -722,6 +840,11 @@
       document.getElementById('receiverId').value = '';
       document.getElementById('typing-indicator').classList.add('hidden');
 
+      // Reset pagination state for fresh room history load
+      historyPage = 1;
+      historyTotalPages = 1;
+      isLoadingMore = false;
+
       unreadCounts.room[id] = 0;
       updateDocumentTitle();
       renderRoomList(allRooms);
@@ -744,13 +867,15 @@
           headers: { 'Authorization': `Bearer ${jwtToken}` }
         });
         if (res.ok) {
-          const messages = await res.json();
-          messages.forEach(msg => {
-            renderMessage(msg, msg.senderId === myUserId);
-            if (msg.reactions && msg.reactions.length) {
-              msg.reactions.forEach(r => updateReactionUI({ messageId: msg.id, userId: r.userId || (r.user && r.user.id), emoji: r.emoji, removed: false }));
-            }
-          });
+          const result = await res.json();
+          historyTotalPages = result.totalPages ?? 1;
+          historyPage = 1;
+          // API returns DESC (newest first); reverse to render oldest at top
+          const messages = (result.data ?? result).reverse();
+          renderMessageBatch(messages);
+          // Scroll to bottom
+          const box = document.getElementById('chatBox');
+          box.scrollTop = box.scrollHeight;
         }
       } catch(e) { console.error('Error loading room history:', e); }
     }
