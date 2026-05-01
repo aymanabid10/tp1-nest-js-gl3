@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CvOperationPhase, CvOperationType } from '../enums/cv-operation.enum';
+import { CvEventType } from '../events/cv.event';
 
 export class CvHistoryResponseDto {
   @ApiProperty({ example: 1 })
   id!: number;
 
-  @ApiProperty({ enum: CvOperationType, example: CvOperationType.CREATE })
-  operationType!: CvOperationType;
-
-  @ApiProperty({ enum: CvOperationPhase, example: CvOperationPhase.COMPLETED })
-  operationPhase!: CvOperationPhase;
+  @ApiProperty({ enum: CvEventType, example: CvEventType.CREATED })
+  eventType!: CvEventType;
 
   @ApiProperty({ example: 1 })
   authorId!: number;
+
+  @ApiProperty({ example: 1 })
+  targetOwnerId!: number;
 
   @ApiProperty({ example: 12, nullable: true })
   cvId!: number | null;

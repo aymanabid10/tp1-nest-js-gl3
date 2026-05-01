@@ -10,11 +10,7 @@ import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { GenericService } from '../common/services/generic.service';
-import { CvCreateStartedEvent } from 'src/cv-history/events/cv-create-started.event';
-import { CvCreatedEvent } from 'src/cv-history/events/cv-created.event';
-import { CvReadEvent } from 'src/cv-history/events/cv-read.event';
-import { CvUpdateStartedEvent } from 'src/cv-history/events/cv-update-started.event';
-import { CvUpdatedEvent } from 'src/cv-history/events/cv-updated.event';
+import { CV_EVENT, CvEvent, CvEventType } from 'src/cv-history/events/cv.event';
 
 @Injectable()
 export class CvService extends GenericService<Cv> {
@@ -28,9 +24,12 @@ export class CvService extends GenericService<Cv> {
 
   async createForOwner(createCvDto: CreateCvDto, ownerId: number): Promise<Cv> {
     this.eventEmitter.emit(
-      CvCreateStartedEvent.name,
-      new CvCreateStartedEvent(
+      CV_EVENT,
+      new CvEvent(
+        CvEventType.CREATE_STARTED,
         ownerId,
+        ownerId,
+        null,
         createCvDto as unknown as Record<string, unknown>,
       ),
     );
@@ -44,8 +43,10 @@ export class CvService extends GenericService<Cv> {
     const savedCv = await this.cvRepository.save(cv);
 
     this.eventEmitter.emit(
-      CvCreatedEvent.name,
-      new CvCreatedEvent(
+      CV_EVENT,
+      new CvEvent(
+        CvEventType.CREATED,
+        ownerId,
         ownerId,
         savedCv.id,
         savedCv as unknown as Record<string, unknown>,
@@ -109,7 +110,10 @@ export class CvService extends GenericService<Cv> {
   async findOneForUser(id: number, user: PayloadInterface): Promise<Cv> {
     const cv = await this.findOneAccessible(id, user);
 
-    this.eventEmitter.emit(CvReadEvent.name, new CvReadEvent(user.sub, cv.id));
+    this.eventEmitter.emit(
+      CV_EVENT,
+      new CvEvent(CvEventType.READ, user.sub, cv.user.id, cv.id),
+    );
 
     return cv;
   }
@@ -119,16 +123,19 @@ export class CvService extends GenericService<Cv> {
     updateCvDto: UpdateCvDto,
     user: PayloadInterface,
   ): Promise<Cv> {
+    const cv = await this.findOneAccessible(id, user);
+
     this.eventEmitter.emit(
-      CvUpdateStartedEvent.name,
-      new CvUpdateStartedEvent(
+      CV_EVENT,
+      new CvEvent(
+        CvEventType.UPDATE_STARTED,
         user.sub,
+        cv.user.id,
         id,
         updateCvDto as unknown as Record<string, unknown>,
       ),
     );
 
-    const cv = await this.findOneAccessible(id, user);
     const { skillIds, ...cvData } = updateCvDto;
 
     Object.assign(cv, cvData);
@@ -140,9 +147,11 @@ export class CvService extends GenericService<Cv> {
     const updatedCv = await this.cvRepository.save(cv);
 
     this.eventEmitter.emit(
-      CvUpdatedEvent.name,
-      new CvUpdatedEvent(
+      CV_EVENT,
+      new CvEvent(
+        CvEventType.UPDATED,
         user.sub,
+        updatedCv.user.id,
         updatedCv.id,
         updatedCv as unknown as Record<string, unknown>,
       ),
@@ -153,7 +162,18 @@ export class CvService extends GenericService<Cv> {
 
   async removeForUser(id: number, user: PayloadInterface): Promise<void> {
     const cv = await this.findOneAccessible(id, user);
+
+    this.eventEmitter.emit(
+      CV_EVENT,
+      new CvEvent(CvEventType.DELETE_STARTED, user.sub, cv.user.id, cv.id),
+    );
+
     await this.cvRepository.softDelete(cv.id);
+
+    this.eventEmitter.emit(
+      CV_EVENT,
+      new CvEvent(CvEventType.DELETED, user.sub, cv.user.id, cv.id),
+    );
   }
 
   private async findOneAccessible(
@@ -177,8 +197,8 @@ export class CvService extends GenericService<Cv> {
   private emitReadEvents(cvs: Cv[], authorId: number): void {
     for (const cv of cvs) {
       this.eventEmitter.emit(
-        CvReadEvent.name,
-        new CvReadEvent(authorId, cv.id),
+        CV_EVENT,
+        new CvEvent(CvEventType.READ, authorId, cv.user.id, cv.id),
       );
     }
   }
