@@ -1,22 +1,28 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { GenericService } from 'src/common/services/generic.service';
+import { Repository } from 'typeorm';
 import { CvHistory } from './entities/cv-history.entity';
-import {
-  CV_HISTORY_REPOSITORY,
-  CvHistoryRepositoryInterface,
-} from './repositories/cv-history.repository.interface';
 
 @Injectable()
-export class CvHistoryService {
+export class CvHistoryService extends GenericService<CvHistory> {
   constructor(
-    @Inject(CV_HISTORY_REPOSITORY)
-    private readonly cvHistoryRepository: CvHistoryRepositoryInterface,
-  ) {}
+    @InjectRepository(CvHistory)
+    private readonly cvHistoryRepository: Repository<CvHistory>,
+  ) {
+    super(cvHistoryRepository);
+  }
 
-  execute(cvId?: string): Promise<CvHistory[]> {
-    if (cvId) {
-      return this.cvHistoryRepository.findByCvId(Number(cvId));
-    }
+  override findAll(): Promise<CvHistory[]> {
+    return this.cvHistoryRepository.find({
+      order: { performedAt: 'DESC' },
+    });
+  }
 
-    return this.cvHistoryRepository.findAll();
+  findByCvId(cvId: number): Promise<CvHistory[]> {
+    return this.cvHistoryRepository.find({
+      where: { cvId },
+      order: { performedAt: 'DESC' },
+    });
   }
 }

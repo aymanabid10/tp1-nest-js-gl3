@@ -11,7 +11,7 @@ export class CvHistory1777590856146 implements MigrationInterface {
       `CREATE TYPE "public"."cv_history_operationphase_enum" AS ENUM('0', '1')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "cv_history" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "operationType" "public"."cv_history_operationtype_enum" NOT NULL, "operationPhase" "public"."cv_history_operationphase_enum" NOT NULL, "authorId" integer NOT NULL, "cvId" integer, "payload" jsonb, "performedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_6c57bc735391d7e7a75350483cd" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "cv_history" ("id" SERIAL NOT NULL, "operationType" "public"."cv_history_operationtype_enum" NOT NULL, "operationPhase" "public"."cv_history_operationphase_enum" NOT NULL, "authorId" integer NOT NULL, "cvId" integer, "payload" jsonb, "performedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_6c57bc735391d7e7a75350483cd" PRIMARY KEY ("id"))`,
     );
   }
 

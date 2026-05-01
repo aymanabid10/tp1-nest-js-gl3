@@ -3,8 +3,8 @@ import { CvOperationPhase, CvOperationType } from '../enums/cv-operation.enum';
 
 @Entity('cv_history')
 export class CvHistory {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
   @Column({ type: 'enum', enum: CvOperationType })
   operationType!: CvOperationType;

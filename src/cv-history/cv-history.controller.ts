@@ -1,4 +1,10 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -15,11 +21,13 @@ export class CvHistoryController {
 
   @Get()
   findAll(): Promise<CvHistoryResponseDto[]> {
-    return this.cvHistoryService.execute();
+    return this.cvHistoryService.findAll();
   }
 
   @Get(':cvId')
-  findByCvId(@Param('cvId') cvId: string): Promise<CvHistoryResponseDto[]> {
-    return this.cvHistoryService.execute(cvId);
+  findByCvId(
+    @Param('cvId', ParseIntPipe) cvId: number,
+  ): Promise<CvHistoryResponseDto[]> {
+    return this.cvHistoryService.findByCvId(cvId);
   }
 }
