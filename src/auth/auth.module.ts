@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -21,9 +22,11 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET') ?? 'default_secret',
-        signOptions: { expiresIn: '1d' },
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') ?? 'default_secret',
+        signOptions: {
+          expiresIn: '1d',
+        },
       }),
     }),
     UserModule,

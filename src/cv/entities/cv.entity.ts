@@ -33,11 +33,13 @@ export class Cv extends TimestampEntity {
   @Column({ nullable: true })
   path!: string;
 
+  @Column({ nullable: false, default: 0 })
+  score!: number;
+
   @ManyToOne(() => User, (user) => user.cvs, { eager: true })
   user!: User;
 
   @ManyToMany(() => Skill, (skill) => skill.cvs, { eager: true })
   @JoinTable() // JoinTable uniquement du côté propriétaire (Cv)
   skills!: Skill[];
-
 }

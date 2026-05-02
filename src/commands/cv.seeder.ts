@@ -50,7 +50,7 @@ async function bootstrap() {
       email: randEmail(),
       password: 'password123',
     } as SignupDto;
-    dto = await PasswordHash.handle(dto) as SignupDto;
+    dto = (await PasswordHash.handle(dto)) as SignupDto;
     const user = await userService.create(dto);
     users.push(user);
     logger.log(`User créé : ${user.username} (${user.email})`);

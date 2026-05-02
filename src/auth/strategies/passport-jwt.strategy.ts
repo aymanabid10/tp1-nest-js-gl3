@@ -6,10 +6,10 @@ import { PayloadInterface } from '../interface/payload.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private config: ConfigService) {
+  constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.get('JWT_SECRET') || 'default_secret',
+      secretOrKey: configService.get<string>('JWT_SECRET') ?? 'default_secret',
     });
   }
 

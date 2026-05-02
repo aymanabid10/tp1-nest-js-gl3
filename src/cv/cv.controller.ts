@@ -59,8 +59,8 @@ export class CvController {
   @Get('admin/all')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  findAllAdmin() {
-    return this.cvService.findAllForAdmin();
+  findAllAdmin(@Req() req: AuthenticatedRequest) {
+    return this.cvService.findAllForUser(req.user);
   }
 
   @Get(':id')
