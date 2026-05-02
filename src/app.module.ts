@@ -8,6 +8,7 @@ import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './auth/auth.module';
+import { MessageModule } from './message/message.module';
 import { WebhookModule } from './webhook/webhook.module';
 import dbConfig from './config/db.config';
 import { BullModule } from '@nestjs/bullmq';
@@ -31,6 +32,7 @@ import { CvEventsModule } from './cv-events/cv-events.module';
     UserModule,
     SkillModule,
     AuthModule,
+    MessageModule,
     WebhookModule,
 
     BullModule.forRoot({

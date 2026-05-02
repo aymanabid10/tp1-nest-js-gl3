@@ -45,5 +45,6 @@ import { SendEmailHandler } from './handlers/signin/send-email.handler';
     GenerateJwtHandler,
     SendEmailHandler,
   ],
+  exports: [JwtModule],
 })
 export class AuthModule {}
