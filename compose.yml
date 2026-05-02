@@ -1,4 +1,8 @@
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
   postgres_tp3:
     image: postgres:16-alpine
     container_name: tp1-postgres
@@ -26,3 +30,4 @@ services:
 
 volumes:
   postgres_data:
+

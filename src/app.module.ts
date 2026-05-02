@@ -8,7 +8,9 @@ import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './auth/auth.module';
+import { WebhookModule } from './webhook/webhook.module';
 import dbConfig from './config/db.config';
+import { BullModule } from '@nestjs/bullmq';
 import { CvHistoryModule } from './cv-history/cv-history.module';
 import { CvEventsModule } from './cv-events/cv-events.module';
 
@@ -29,6 +31,14 @@ import { CvEventsModule } from './cv-events/cv-events.module';
     UserModule,
     SkillModule,
     AuthModule,
+    WebhookModule,
+
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || "6379") ,
+      },
+    }),
     CvHistoryModule,
     CvEventsModule,
   ],
