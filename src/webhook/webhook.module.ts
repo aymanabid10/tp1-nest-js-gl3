@@ -10,6 +10,9 @@ import { OutgoingProcessor } from './processors/outgoing.processor';
 import { IncomingProcessor } from './processors/incoming.processor';
 import { BullModule } from '@nestjs/bullmq';
 import { WebhookService } from './webhook.service';
+import { CvScoredHandler } from './handlers/cv-scored.handler';
+import { WebhookHandlerRegistry } from './webhook-handler.registry';
+import { CvCreatedHandler } from './handlers/cv-created.handler';
 
 @Module({
   imports: [
@@ -30,6 +33,11 @@ import { WebhookService } from './webhook.service';
     SignatureService,
     IncomingProcessor,
     OutgoingProcessor,
+
+    // Handlers
+    CvCreatedHandler,
+    CvScoredHandler,
+    WebhookHandlerRegistry,
   ],
   exports: [WebhookDispatcherService],
 })

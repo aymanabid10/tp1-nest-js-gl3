@@ -1,9 +1,22 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from '@nestjs/common';
+import { WebhookHandlerRegistry } from './webhook-handler.registry';
 
 @Injectable()
 export class WebhookService {
-    async processIncomingEvent(payload: any) {
-        // Process the incoming webhook event
-        console.log("Received webhook event:", payload);
+  private readonly logger = new Logger(WebhookService.name);
+
+  constructor(private readonly registry: WebhookHandlerRegistry) {}
+
+  async processIncomingEvent(payload: any) {
+    this.logger.log(`Incoming webhook received: ${payload.event}`);
+
+    const handler = this.registry.getHandler(payload.event);
+
+    if (!handler) {
+      this.logger.warn(`No handler for event: ${payload.event}`);
+      return;
     }
+
+    return handler.handle(payload.data);
+  }
 }
