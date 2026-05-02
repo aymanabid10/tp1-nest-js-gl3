@@ -5,6 +5,7 @@ import { WebhookDelivery } from '../entities/webhook-delivery.entity';
 import { Repository } from 'typeorm/repository/Repository.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
+import { WebhookStatus } from '../enums/webhook.enum';
 
 @Processor('outgoing-webhooks')
 export class OutgoingProcessor extends WorkerHost {
@@ -30,7 +31,7 @@ export class OutgoingProcessor extends WorkerHost {
       await this.deliveryRepo.save({
         webhookId: webhook.id,
         event: payload.event,
-        status: 'SUCCESS',
+        status: WebhookStatus.SUCESS,
         responseCode: response.status,
       });
 
@@ -38,7 +39,7 @@ export class OutgoingProcessor extends WorkerHost {
       await this.deliveryRepo.save({
         webhookId: webhook.id,
         event: payload.event,
-        status: 'FAILED',
+        status: WebhookStatus.FAILED,
         attempts: job.attemptsMade,
       });
 
