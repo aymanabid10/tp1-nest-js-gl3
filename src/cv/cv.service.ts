@@ -9,12 +9,14 @@ import { Cv } from './entities/cv.entity';
 import { CreateCvDto } from './dto/create-cv.dto';
 import { UpdateCvDto } from './dto/update-cv.dto';
 import { GenericService } from '../common/services/generic.service';
+import { WebhookDispatcherService } from 'src/webhook/webhook-dispatcher.service';
 
 @Injectable()
 export class CvService extends GenericService<Cv> {
   constructor(
     @InjectRepository(Cv)
     private readonly cvRepository: Repository<Cv>,
+    private readonly webhookDispatcher: WebhookDispatcherService,
   ) {
     super(cvRepository);
   }
@@ -26,6 +28,7 @@ export class CvService extends GenericService<Cv> {
       skills: createCvDto.skillIds?.map((id) => ({ id })) ?? [],
     });
 
+    await this.webhookDispatcher.dispatch('cv.parsed', { cvId: cv.id, ownerId });
     return this.cvRepository.save(cv);
   }
 

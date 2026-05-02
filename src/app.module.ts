@@ -9,6 +9,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { WebhookModule } from './webhook/webhook.module';
 import dbConfig from './config/db.config';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -27,6 +28,13 @@ import dbConfig from './config/db.config';
     SkillModule,
     AuthModule,
     WebhookModule,
+
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || "6379") ,
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
