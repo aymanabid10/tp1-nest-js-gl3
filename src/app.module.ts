@@ -6,8 +6,11 @@ import { CvModule } from './cv/cv.module';
 import { UserModule } from './user/user.module';
 import { SkillModule } from './skill/skill.module';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './auth/auth.module';
 import dbConfig from './config/db.config';
+import { CvHistoryModule } from './cv-history/cv-history.module';
+import { CvEventsModule } from './cv-events/cv-events.module';
 
 @Module({
   imports: [
@@ -21,10 +24,13 @@ import dbConfig from './config/db.config';
         configService.get<TypeOrmModuleOptions>('database')!,
       inject: [ConfigService],
     }),
+    EventEmitterModule.forRoot(),
     CvModule,
     UserModule,
     SkillModule,
     AuthModule,
+    CvHistoryModule,
+    CvEventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
