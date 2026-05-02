@@ -33,6 +33,9 @@ export class Cv extends TimestampEntity {
   @Column({ nullable: true })
   path!: string;
 
+  @Column({ nullable: false, default: 0 })
+  score!: number;
+
   @ManyToOne(() => User, (user) => user.cvs, { eager: true })
   user!: User;
 
