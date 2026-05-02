@@ -26,14 +26,14 @@ import { UpdateCvDto } from './dto/update-cv.dto';
 
 @ApiTags('CV')
 @Controller('cv')
-//UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @UsePipes(new ValidationPipe({ whitelist: true }))
 export class CvController {
   constructor(private readonly cvService: CvService) {}
 
   @Post()
   create(@Body() createCvDto: CreateCvDto, @Req() req: AuthenticatedRequest) {
-    return this.cvService.createForOwner(createCvDto, 2);
+    return this.cvService.createForOwner(createCvDto, req.user.sub);
   }
 
   @Get()
