@@ -2,12 +2,13 @@ import { Body, Controller, Get, Headers, HttpCode, Post, UnauthorizedException }
 import { Queue } from 'bullmq';
 import { SignatureService } from './signature.service';
 import { InjectQueue } from '@nestjs/bullmq';
+import { WebhookService } from './webhook.service';
 
 @Controller('webhooks')
 export class IncomingWebhookController {
   constructor(
     private readonly signatureService: SignatureService,
-    @InjectQueue('incoming-webhooks') private queue: Queue,
+    private readonly webhookService: WebhookService,
   ) {}
 
   @Post("incoming")
@@ -16,15 +17,7 @@ export class IncomingWebhookController {
     @Body() body : any,
     @Headers('x-signature') signature: string,
   ) {    
-    if (!this.signatureService.verify(body, signature)) {
-      throw new UnauthorizedException('Invalid signature');
-    }
-
-    await this.queue.add('process-incoming', {
-      payload: body,
-    });
-
-    return { received: true };
+    return this.webhookService.handleIncomingEvent(body, signature);
   }
 
   @Get("signature")

@@ -6,6 +6,7 @@ import { Repository } from 'typeorm/repository/Repository.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { WebhookStatus } from '../enums/webhook.enum';
+import { IdempotencyService } from '../idempotency.service';
 
 @Processor('outgoing-webhooks')
 export class OutgoingProcessor extends WorkerHost {
@@ -13,12 +14,19 @@ export class OutgoingProcessor extends WorkerHost {
     private readonly signatureService: SignatureService,
     @InjectRepository(WebhookDelivery)
     private deliveryRepo: Repository<WebhookDelivery>,
+    private readonly idempotencyService: IdempotencyService,
   ) {
     super();
   }
 
   async process(job: Job) {
-    const { webhook, payload } = job.data;
+    const { webhook, payload, deliveryId } = job.data;
+
+    const shouldSend = await this.idempotencyService.isProcessed(deliveryId);
+
+    if (!shouldSend) {
+      return;
+    }
 
     const signature = this.signatureService.sign(payload, webhook.secret);
 

@@ -13,6 +13,7 @@ import { WebhookService } from './webhook.service';
 import { CvScoredHandler } from './handlers/cv-scored.handler';
 import { WebhookHandlerRegistry } from './webhook-handler.registry';
 import { CvCreatedHandler } from './handlers/cv-created.handler';
+import { IdempotencyService } from './idempotency.service';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CvCreatedHandler } from './handlers/cv-created.handler';
     SignatureService,
     IncomingProcessor,
     OutgoingProcessor,
+    IdempotencyService,
 
     // Handlers
     CvCreatedHandler,
