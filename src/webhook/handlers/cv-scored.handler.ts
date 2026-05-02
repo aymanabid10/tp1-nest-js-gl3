@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebhookEventHandler } from '../interfaces/webhook-event-handler.interface';
-import { CvService } from 'src/cv/cv.service';
 
 @Injectable()
 export class CvScoredHandler implements WebhookEventHandler {
